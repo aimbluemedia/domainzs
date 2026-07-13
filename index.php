@@ -4,86 +4,71 @@ declare(strict_types=1);
 require __DIR__ . '/src/bootstrap.php';
 require __DIR__ . '/src/layout.php';
 
-use Domainzs\Auth;
-
-Auth::requireLogin();
-
-$portfolio = $pdo->query(
-    "SELECT * FROM domains WHERE kind = 'portfolio'
-     ORDER BY expires_at IS NULL, expires_at ASC"
+$featured = $pdo->query(
+    "SELECT * FROM listings WHERE status = 'active' ORDER BY score DESC, price_cents DESC LIMIT 6"
 )->fetchAll();
-$watchlist = $pdo->query(
-    "SELECT * FROM domains WHERE kind = 'watchlist'
-     ORDER BY FIELD(status, 'available', 'pending_delete', 'registered', 'unknown'), domain"
-)->fetchAll();
+$plans = $pdo->query('SELECT * FROM plans WHERE is_active = 1 ORDER BY sort, price_cents')->fetchAll();
 
-$expiring30 = count(array_filter($portfolio, function (array $d): bool {
-    $days = days_until($d['expires_at']);
-    return $days !== null && $days <= 30;
-}));
-$availableNow = count(array_filter($watchlist, fn (array $d): bool => $d['status'] === 'available'));
+$dropCount = (int)$pdo->query('SELECT COUNT(*) FROM drops')->fetchColumn();
+$topToday  = (int)$pdo->query(
+    "SELECT COUNT(*) FROM drops WHERE dropped_date = (SELECT MAX(dropped_date) FROM drops) AND score >= 70"
+)->fetchColumn();
 
-$lastCheck = $pdo->query('SELECT MAX(last_checked_at) FROM domains')->fetchColumn();
-
-layout_header('Dashboard');
+layout_header(setting('hero_title', 'Rated dropped domains, every day'), 'public');
 ?>
-<h1>Dashboard</h1>
-<p class="sub">Everything you own, everything you want — and what needs attention today.</p>
+<section class="hero">
+    <h1><?= e(setting('hero_title', 'The best dropped 9-letter .coms — found and rated for you, daily.')) ?></h1>
+    <p class="hero-sub"><?= e(setting('hero_subtitle', 'domainzs pulls every freshly dropped domain, keeps the 9-character .coms, and scores each one for brandability and resale value — so you only look at names worth registering.')) ?></p>
+    <div class="hero-cta">
+        <a class="btn btn-primary btn-lg" href="/signup.php">Join free — see today's drops</a>
+        <a class="btn btn-lg" href="/domains.php">Browse domains for sale</a>
+    </div>
+    <p class="hero-note"><?= number_format($dropCount) ?> drops rated so far<?= $topToday > 0 ? ' · ' . $topToday . ' hot names in the latest batch' : '' ?></p>
+</section>
 
-<div class="stat-grid">
-    <div class="stat"><span class="stat-num"><?= count($portfolio) ?></span><span class="stat-label">Domains owned</span></div>
-    <div class="stat"><span class="stat-num <?= $expiring30 > 0 ? 'stat-warn' : '' ?>"><?= $expiring30 ?></span><span class="stat-label">Expiring ≤ 30 days</span></div>
-    <div class="stat"><span class="stat-num"><?= count($watchlist) ?></span><span class="stat-label">Domains watched</span></div>
-    <div class="stat"><span class="stat-num <?= $availableNow > 0 ? 'stat-good' : '' ?>"><?= $availableNow ?></span><span class="stat-label">Available now</span></div>
+<section class="features">
+    <div class="feature"><span class="fi">📡</span><h3>Every drop, every day</h3>
+        <p>We ingest the full daily list of deleted domains and keep exactly what you hunt: 9-character .coms.</p></div>
+    <div class="feature"><span class="fi">🧠</span><h3>Rated, not raw</h3>
+        <p>Each name is scored 0–99 for pronounceability, real words, and brandable patterns — with an AI second opinion on the best.</p></div>
+    <div class="feature"><span class="fi">💎</span><h3>Registered-and-ready deals</h3>
+        <p>The keepers we register ourselves go straight to the marketplace — browse and make an offer.</p></div>
+</section>
+
+<?php if ($featured): ?>
+<h2 style="text-align:center">Fresh on the marketplace</h2>
+<div class="listing-grid">
+    <?php foreach ($featured as $l): ?>
+    <a class="listing" href="/domains.php#d<?= (int)$l['id'] ?>">
+        <span class="listing-domain"><?= e($l['domain']) ?></span>
+        <?php if ($l['headline']): ?><span class="listing-head"><?= e($l['headline']) ?></span><?php endif; ?>
+        <span class="listing-price"><?= money_cents((int)$l['price_cents']) ?></span>
+        <?php if ($l['score'] !== null): ?><span class="scorepill sc-<?= e(score_class((int)$l['score'])) ?>"><?= (int)$l['score'] ?></span><?php endif; ?>
+    </a>
+    <?php endforeach; ?>
 </div>
-
-<div class="scanbar">
-    <form class="inline" method="post" action="/check.php">
-        <?= csrf_field() ?>
-        <button class="btn btn-scan" type="submit">🔄 Check all now</button>
-    </form>
-    <span class="scanbar-label">Last check: <?= $lastCheck ? e((string)$lastCheck) : 'never — run your first check!' ?></span>
-</div>
-
-<h2>⏳ Portfolio — renewals coming up</h2>
-<?php if (!$portfolio): ?>
-    <div class="empty">No domains yet. <a href="/portfolio.php">Add your first domain</a> and domainzs will pull its expiry date automatically.</div>
-<?php else: ?>
-    <table>
-        <tr><th>Domain</th><th>Expires</th><th>Countdown</th><th>Registrar</th><th>Auto-renew</th></tr>
-        <?php foreach (array_slice($portfolio, 0, 10) as $d): ?>
-        <tr>
-            <td><strong><?= e($d['domain']) ?></strong></td>
-            <td><?= $d['expires_at'] ? e(substr($d['expires_at'], 0, 10)) : '—' ?></td>
-            <td><span class="badge-exp exp-<?= e(expiry_class($d['expires_at'])) ?>"><?= e(expiry_label($d['expires_at'])) ?></span></td>
-            <td><?= e($d['registrar'] ?? '—') ?></td>
-            <td><?= $d['auto_renew'] ? '✅ on' : '⚠️ off' ?></td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
-    <?php if (count($portfolio) > 10): ?>
-        <p class="sub" style="margin-top:10px"><a href="/portfolio.php">See all <?= count($portfolio) ?> domains →</a></p>
-    <?php endif; ?>
+<p style="text-align:center;margin-top:16px"><a href="/domains.php">See everything for sale →</a></p>
 <?php endif; ?>
 
-<h2>👀 Watchlist — drops &amp; availability</h2>
-<?php if (!$watchlist): ?>
-    <div class="empty">Not watching anything yet. <a href="/watchlist.php">Watch a domain</a> and get an email the moment it becomes available.</div>
-<?php else: ?>
-    <table>
-        <tr><th>Domain</th><th>Status</th><th>Current expiry</th><th>Last checked</th></tr>
-        <?php foreach (array_slice($watchlist, 0, 10) as $d): [$label, $class] = status_meta($d['status']); ?>
-        <tr>
-            <td><strong><?= e($d['domain']) ?></strong></td>
-            <td><span class="badge-st st-<?= e($class) ?>"><?= e($label) ?></span></td>
-            <td><?= $d['expires_at'] ? e(substr($d['expires_at'], 0, 10)) . ' <span class="sub-inline">(' . e(expiry_label($d['expires_at'])) . ')</span>' : '—' ?></td>
-            <td><?= e($d['last_checked_at'] ?? 'never') ?></td>
-        </tr>
+<section class="pricing" id="pricing">
+    <h2>Pricing</h2>
+    <div class="plan-grid">
+        <?php foreach ($plans as $i => $p): ?>
+        <div class="plan <?= $p['price_cents'] > 0 ? 'plan-featured' : '' ?>">
+            <h3><?= e($p['name']) ?></h3>
+            <div class="plan-price"><?= money_cents((int)$p['price_cents']) ?><span>/<?= e($p['bill_interval']) ?></span></div>
+            <p class="plan-blurb"><?= e($p['blurb']) ?></p>
+            <ul class="plan-features">
+                <?php foreach (array_filter(array_map('trim', explode("\n", (string)$p['features']))) as $f): ?>
+                <li><?= e($f) ?></li>
+                <?php endforeach; ?>
+            </ul>
+            <a class="btn <?= $p['price_cents'] > 0 ? 'btn-primary' : '' ?>" href="/signup.php?plan=<?= e($p['slug']) ?>">
+                <?= $p['price_cents'] > 0 ? 'Get ' . e($p['name']) : 'Start free' ?>
+            </a>
+        </div>
         <?php endforeach; ?>
-    </table>
-    <?php if (count($watchlist) > 10): ?>
-        <p class="sub" style="margin-top:10px"><a href="/watchlist.php">See all <?= count($watchlist) ?> watched domains →</a></p>
-    <?php endif; ?>
-<?php endif; ?>
+    </div>
+</section>
 <?php
 layout_footer();

@@ -1,0 +1,39 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Cron fetcher — pulls the dropped-domain list, filters (9-char .coms by
+ * default), scores everything, verifies + AI-rates the best, and emails a
+ * digest when new drops land.
+ *
+ * Usage:
+ *   php bin/fetch.php               # today's list
+ *   php bin/fetch.php 2026-07-12    # a specific date
+ *
+ * Suggested crontab (daily, after the registries publish their drop lists):
+ *   30 6 * * *  php /path/to/domainzs/bin/fetch.php >> /var/log/domainzs.log 2>&1
+ */
+
+require __DIR__ . '/../src/bootstrap.php';
+
+use Domainzs\DropEngine;
+use Domainzs\DropsClient;
+use Domainzs\Notifier;
+
+$date = isset($argv[1]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $argv[1]) ? $argv[1] : date('Y-m-d');
+
+$stats = (new DropEngine($pdo, $config))->run($date);
+
+$top = $pdo->prepare('SELECT domain, score FROM drops WHERE dropped_date = ? ORDER BY score DESC LIMIT 5');
+$top->execute([$date]);
+$topDrops = $top->fetchAll();
+
+(new Notifier($config))->sendFetchDigest($date, $stats, $topDrops);
+
+$mock  = (new DropsClient(drops_config($config)))->isMock() ? ' [MOCK feed]' : '';
+$stamp = date('Y-m-d H:i:s');
+echo "[{$stamp}] {$date}: {$stats['raw']} in feed → {$stats['matched']} matched filter → {$stats['added']} new"
+    . " · {$stats['verified']} RDAP-verified · {$stats['ai_rated']} AI-rated{$mock}\n";
+foreach ($topDrops as $drop) {
+    echo "  {$drop['score']}  {$drop['domain']}\n";
+}

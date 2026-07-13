@@ -6,9 +6,9 @@ require __DIR__ . '/src/layout.php';
 
 use Domainzs\Auth;
 
-$next = isset($_GET['next']) ? (string)$_GET['next'] : '/';
+$next = isset($_GET['next']) ? (string)$_GET['next'] : '';
 if (Auth::check()) {
-    redirect('/');
+    redirect(Auth::isAdmin() ? '/superadmin/' : '/member/');
 }
 
 $error = null;
@@ -18,13 +18,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pass  = (string)($_POST['password'] ?? '');
     if (Auth::attempt($pdo, $login, $pass)) {
         // Only allow same-site relative redirects.
-        redirect(str_starts_with($next, '/') ? $next : '/');
+        if ($next !== '' && str_starts_with($next, '/')) {
+            redirect($next);
+        }
+        redirect(Auth::isAdmin() ? '/superadmin/' : '/member/');
     }
     $error = 'Invalid login or password.';
     usleep(400000);
 }
 
-layout_header('Log in');
+layout_header('Log in', 'public');
 ?>
 <div class="auth-wrap">
     <h1>Log in</h1>
@@ -38,7 +41,7 @@ layout_header('Log in');
             <input id="password" name="password" type="password" autocomplete="current-password" required>
             <button class="btn btn-primary" style="width:100%;margin-top:18px" type="submit">Log in</button>
         </form>
-        <p class="sub" style="text-align:center;margin-top:16px">No account? Create one with <code>php bin/install.php</code>.</p>
+        <p class="sub" style="text-align:center;margin-top:16px">New here? <a href="/signup.php">Create a free account</a></p>
     </div>
 </div>
 <?php

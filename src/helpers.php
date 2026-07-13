@@ -2,7 +2,8 @@
 declare(strict_types=1);
 
 /**
- * Small view/helper functions shared across the app.
+ * Small view/helper functions shared across the public site, member area,
+ * and superadmin area.
  */
 
 /** HTML-escape a value for safe output. */
@@ -41,13 +42,18 @@ function redirect(string $path): never
 }
 
 /** Format dollars from a float. */
-function money(?float $amount, string $currency = 'USD'): string
+function money(?float $amount): string
 {
     if ($amount === null) {
         return '—';
     }
-    $symbol = ['USD' => '$', 'GBP' => '£', 'EUR' => '€', 'CAD' => 'C$', 'AUD' => 'A$'][$currency] ?? '';
-    return $symbol . number_format($amount, 2);
+    return '$' . number_format($amount, 2);
+}
+
+/** Format dollars from an integer number of cents. */
+function money_cents(int $cents): string
+{
+    return '$' . number_format($cents / 100, $cents % 100 === 0 ? 0 : 2);
 }
 
 /** Read a site setting (key/value table), with a per-request cache. */
@@ -97,73 +103,71 @@ function normalize_domain(string $input): ?string
     }
     $d = preg_replace('/^www\./', '', $d) ?? $d;
     $d = rtrim($d, '.');
-    // IDN → punycode so RDAP and DNS both understand it.
     if (function_exists('idn_to_ascii') && preg_match('/[^\x20-\x7e]/', $d)) {
         $ascii = idn_to_ascii($d, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46);
         if (is_string($ascii)) {
             $d = $ascii;
         }
     }
-    // Must be label(.label)+ with a letter-ish TLD.
     if (!preg_match('/^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{1,62}$/', $d)) {
         return null;
     }
     return $d;
 }
 
-/** Whole days from now until a datetime string (negative if past), null if unset. */
-function days_until(?string $datetime): ?int
+/** Split a domain into [sld, tld]: "coolbrand.com" → ["coolbrand", "com"]. */
+function split_domain(string $domain): array
 {
-    if (!$datetime) {
-        return null;
+    $pos = strpos($domain, '.');
+    if ($pos === false) {
+        return [$domain, ''];
     }
-    try {
-        $end = new DateTime($datetime);
-    } catch (\Exception $e) {
-        return null;
-    }
-    return (int) floor(($end->getTimestamp() - time()) / 86400);
+    return [substr($domain, 0, $pos), substr($domain, $pos + 1)];
 }
 
-/** Human-friendly expiry countdown, e.g. "in 42 days", "in 3 days!", "expired". */
-function expiry_label(?string $expiresAt): string
+/** CSS badge class for a 0-99 score: hot / good / meh / low. */
+function score_class(int $score): string
 {
-    $days = days_until($expiresAt);
-    if ($days === null) {
-        return '—';
-    }
-    if ($days < 0) {
-        return 'expired ' . abs($days) . 'd ago';
-    }
-    if ($days === 0) {
-        return 'expires today!';
-    }
-    return "in {$days}d";
+    if ($score >= 75) return 'hot';
+    if ($score >= 55) return 'good';
+    if ($score >= 35) return 'meh';
+    return 'low';
 }
 
-/** CSS badge class for an expiry horizon: ok / warn / danger. */
-function expiry_class(?string $expiresAt): string
+/**
+ * Build the drop-feed config, preferring values saved in admin Settings (DB)
+ * and falling back to config.php. Lets the superadmin manage the feed in the UI.
+ */
+function drops_config(array $config): array
 {
-    $days = days_until($expiresAt);
-    if ($days === null) {
-        return 'unknown';
-    }
-    if ($days <= 7) {
-        return 'danger';
-    }
-    if ($days <= 30) {
-        return 'warn';
-    }
-    return 'ok';
+    $file = $config['drops'] ?? [];
+    return [
+        'provider'  => setting('drops_provider', (string)($file['provider'] ?? 'mock')),
+        'url'       => setting('drops_url', (string)($file['url'] ?? '')),
+        'exact_len' => (int)(setting('drops_exact_len', (string)($file['exact_len'] ?? 9)) ?? 9),
+        'tlds'      => setting('drops_tlds', (string)($file['tlds'] ?? 'com')),
+        'max_keep'  => (int)(setting('drops_max_keep', (string)($file['max_keep'] ?? 500)) ?? 500),
+    ];
 }
 
-/** Display label + badge class for a domain registration status. */
-function status_meta(string $status): array
+/** AI config: admin Settings first, config.php fallback. */
+function ai_config(array $config): array
 {
-    return match ($status) {
-        'registered'     => ['Registered', 'taken'],
-        'available'      => ['Available!', 'free'],
-        'pending_delete' => ['Pending delete', 'drop'],
-        default          => ['Unknown', 'unknown'],
-    };
+    $file = $config['ai'] ?? [];
+    return [
+        'api_key'       => setting('ai_api_key', (string)($file['api_key'] ?? '')),
+        'model'         => setting('ai_model', (string)($file['model'] ?? 'claude-opus-4-8')),
+        'max_per_fetch' => (int)(setting('ai_max_per_fetch', (string)($file['max_per_fetch'] ?? 15)) ?? 15),
+    ];
+}
+
+/** Mail config: admin Settings first, config.php fallback. */
+function mail_config(array $config): array
+{
+    $file = $config['mail'] ?? [];
+    return [
+        'enabled' => (setting('mail_enabled', !empty($file['enabled']) ? '1' : '0') === '1'),
+        'to'      => setting('mail_to', (string)($file['to'] ?? '')),
+        'from'    => setting('mail_from', (string)($file['from'] ?? 'domainzs@localhost')),
+    ];
 }

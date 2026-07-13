@@ -41,9 +41,6 @@ require __DIR__ . '/helpers.php';
 // --- Database ---
 $pdo = \Domainzs\Database::connect($config['db']);
 
-// --- RDAP client (shared by pages and the CLI checker) ---
-$rdap = new \Domainzs\RdapClient($config['rdap'] ?? []);
-
 // --- Session (web only) ---
 if (PHP_SAPI !== 'cli' && session_status() !== PHP_SESSION_ACTIVE) {
     session_set_cookie_params([
