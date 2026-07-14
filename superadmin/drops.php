@@ -109,7 +109,7 @@ layout_header('Drops', 'admin');
             <td><?= $d['ai_rating'] !== null ? (int)$d['ai_rating'] : '—' ?></td>
             <td><?= $d['est_value'] ? '~$' . number_format((float)$d['est_value']) : '—' ?></td>
             <td><?= $d['availability'] === 'available' ? '✅' : ($d['availability'] === 'registered' ? '❌' : '—') ?><?php
-                if ($d['reg_price'] !== null): ?> <span class="sub-inline"><?= e(money((float)$d['reg_price'])) ?></span><?php endif; ?></td>
+                if (($d['reg_price'] ?? null) !== null): ?> <span class="sub-inline"><?= e(money((float)$d['reg_price'])) ?></span><?php endif; ?></td>
             <td class="row-actions">
                 <form class="inline" method="post">
                     <?= csrf_field() ?>

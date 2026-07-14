@@ -108,7 +108,7 @@ layout_header('Drop Board', 'member');
             <td><?= $d['availability'] === 'available' ? '<span class="badge-st st-free">Available</span>'
                     : ($d['availability'] === 'registered' ? '<span class="badge-st st-taken">Taken</span>'
                     : '<span class="badge-st st-unknown">Unchecked</span>') ?>
-                <?php if ($d['reg_price'] !== null): ?><span class="sub-inline">reg <?= e(money((float)$d['reg_price'])) ?></span><?php endif; ?></td>
+                <?php if (($d['reg_price'] ?? null) !== null): ?><span class="sub-inline">reg <?= e(money((float)$d['reg_price'])) ?></span><?php endif; ?></td>
         </tr>
         <?php endforeach; ?>
     </table>
