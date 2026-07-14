@@ -150,6 +150,18 @@ function drops_config(array $config): array
     ];
 }
 
+/** name.com API config: admin Settings first, config.php fallback. */
+function namecom_config(array $config): array
+{
+    $file = $config['namecom'] ?? [];
+    return [
+        'username' => setting('namecom_username', (string)($file['username'] ?? '')),
+        'token'    => setting('namecom_token', (string)($file['token'] ?? '')),
+        'test'     => (setting('namecom_test', !empty($file['test']) ? '1' : '0') === '1'),
+        'endpoint' => setting('namecom_endpoint', (string)($file['endpoint'] ?? '')),
+    ];
+}
+
 /** AI config: admin Settings first, config.php fallback. */
 function ai_config(array $config): array
 {

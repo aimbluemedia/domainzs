@@ -60,9 +60,11 @@ CREATE TABLE IF NOT EXISTS drops (
     dropped_date DATE         NOT NULL,
     score        TINYINT UNSIGNED NOT NULL DEFAULT 0,   -- heuristic 0-99
     score_notes  VARCHAR(500) NULL,              -- JSON array of reasons
-    -- Availability re-verified via RDAP for the top-scored drops:
+    -- Availability re-verified (name.com API or RDAP) for the top-scored drops:
     --   'available' | 'registered' | 'unknown'
     availability VARCHAR(12)  NOT NULL DEFAULT 'unknown',
+    -- Live registration price from the name.com availability check, USD.
+    reg_price    DECIMAL(8,2) NULL,
     -- Optional AI pass (Claude) on the top-scored drops.
     ai_rating    TINYINT UNSIGNED NULL,          -- 0-99
     ai_comment   VARCHAR(300) NULL,

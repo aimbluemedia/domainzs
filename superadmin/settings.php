@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fields = [
         'hero_title', 'hero_subtitle', 'upgrade_note',
         'drops_provider', 'drops_url', 'drops_exact_len', 'drops_tlds', 'drops_max_keep',
+        'namecom_username', 'namecom_token',
         'ai_api_key', 'ai_model', 'ai_max_per_fetch',
         'mail_enabled', 'mail_to', 'mail_from',
     ];
@@ -21,15 +22,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             set_setting($field, trim((string)$_POST[$field]));
         }
     }
-    // Checkbox: absent when unchecked.
+    // Checkboxes: absent when unchecked.
     set_setting('mail_enabled', empty($_POST['mail_enabled']) ? '0' : '1');
+    set_setting('namecom_test', empty($_POST['namecom_test']) ? '0' : '1');
     flash('success', 'Settings saved.');
     redirect('/superadmin/settings.php');
 }
 
-$drops = drops_config($config);
-$ai    = ai_config($config);
-$mail  = mail_config($config);
+$drops   = drops_config($config);
+$namecom = namecom_config($config);
+$ai      = ai_config($config);
+$mail    = mail_config($config);
+$namecomOn = (new \Domainzs\NameComClient($namecom))->isConfigured();
 
 layout_header('Settings', 'admin');
 ?>
@@ -66,6 +70,27 @@ layout_header('Settings', 'admin');
         <input name="drops_url" value="<?= e($drops['url']) ?>" placeholder="https://…/deleted-domains/{date}.zip">
         <p class="field-help">Any URL returning one domain per line (txt/csv, zip supported). <code>{date}</code> is replaced
         with YYYY-MM-DD. Works with WhoisDS downloads and most paid drop feeds.</p>
+    </div>
+
+    <div class="panel">
+        <h2 style="margin-top:0">🏷️ name.com API
+            <?= $namecomOn ? '<span class="badge-st st-free">configured</span>' : '<span class="badge-st st-taken">not set</span>' ?></h2>
+        <div class="row">
+            <div>
+                <label>name.com username</label>
+                <input name="namecom_username" value="<?= e($namecom['username']) ?>" autocomplete="off">
+            </div>
+            <div class="rf-grow">
+                <label>API token</label>
+                <input name="namecom_token" type="password" value="<?= e($namecom['token']) ?>" autocomplete="new-password" placeholder="paste your API token">
+            </div>
+        </div>
+        <label class="checkbox"><input type="checkbox" name="namecom_test" value="1" <?= $namecom['test'] ? 'checked' : '' ?>>
+            Use the test environment (api.dev.name.com — needs its own token)</label>
+        <p class="field-help">Create a token at <strong>name.com → Account → Settings → API tokens</strong>
+        (https://www.name.com/account/settings/api). When configured, each fetch bulk-checks the top drops through
+        name.com — live availability plus the real registration price shown on the drop board. Without it, the app
+        falls back to free RDAP checks (no prices).</p>
     </div>
 
     <div class="panel">

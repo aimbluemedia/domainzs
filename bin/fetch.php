@@ -33,7 +33,7 @@ $topDrops = $top->fetchAll();
 $mock  = (new DropsClient(drops_config($config)))->isMock() ? ' [MOCK feed]' : '';
 $stamp = date('Y-m-d H:i:s');
 echo "[{$stamp}] {$date}: {$stats['raw']} in feed → {$stats['matched']} matched filter → {$stats['added']} new"
-    . " · {$stats['verified']} RDAP-verified · {$stats['ai_rated']} AI-rated{$mock}\n";
+    . " · {$stats['verified']} availability-verified · {$stats['ai_rated']} AI-rated{$mock}\n";
 foreach ($topDrops as $drop) {
     echo "  {$drop['score']}  {$drop['domain']}\n";
 }

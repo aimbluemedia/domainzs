@@ -90,22 +90,53 @@ final class DropEngine
         ];
     }
 
-    /** Re-check availability of the date's best unverified drops via RDAP. */
+    /**
+     * Re-check availability of the date's best unverified drops.
+     * Prefers the name.com API (bulk, with real registration prices);
+     * falls back to per-domain RDAP lookups when name.com isn't configured.
+     */
     private function verifyTop(string $date, int $limit): int
     {
         if ($limit <= 0) {
             return 0;
         }
-        $rdap = new RdapClient($this->config['rdap'] ?? []);
         $stmt = $this->pdo->prepare(
             "SELECT id, domain FROM drops
              WHERE dropped_date = ? AND availability = 'unknown'
              ORDER BY score DESC LIMIT " . $limit
         );
         $stmt->execute([$date]);
+        $rows = $stmt->fetchAll();
+        if (!$rows) {
+            return 0;
+        }
+
+        $namecom = new NameComClient(namecom_config($this->config));
+        if ($namecom->isConfigured()) {
+            $results = $namecom->checkAvailability(array_column($rows, 'domain'));
+            $update  = $this->pdo->prepare(
+                'UPDATE drops SET availability = ?, reg_price = ? WHERE id = ?'
+            );
+            $count = 0;
+            foreach ($rows as $row) {
+                $result = $results[strtolower($row['domain'])] ?? null;
+                if ($result === null) {
+                    continue; // API error / TLD not supported — stays unknown
+                }
+                $update->execute([
+                    $result['purchasable'] ? 'available' : 'registered',
+                    $result['price'],
+                    $row['id'],
+                ]);
+                $count++;
+            }
+            return $count;
+        }
+
+        $rdap   = new RdapClient($this->config['rdap'] ?? []);
         $update = $this->pdo->prepare('UPDATE drops SET availability = ? WHERE id = ?');
         $count  = 0;
-        foreach ($stmt->fetchAll() as $row) {
+        foreach ($rows as $row) {
             $info = $rdap->lookup($row['domain']);
             $availability = match ($info['status']) {
                 'available'  => 'available',
