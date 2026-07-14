@@ -96,10 +96,20 @@ The whole app runs from a **single folder** — the domain's document root.
 ## The drop feed
 
 Set **provider = URL feed** in `/superadmin/settings.php` and paste a URL that
-returns one domain per line (`.txt`, `.csv`, or a `.zip` of one). `{date}` in
-the URL is replaced with the day being fetched (YYYY-MM-DD). This works with
-WhoisDS's downloadable deleted-domain lists and most paid drop feeds
-(DropCatch, ExpiredDomains exports, registrar drop lists…).
+returns one domain per line (`.txt`, `.csv`, or a `.zip` of one). Date
+placeholders in the URL are replaced with the day being fetched:
+
+| Placeholder | Becomes | Used by |
+|---|---|---|
+| `{date}` | `2026-07-14` | most plain feeds |
+| `{date_ymd}` | `20260714` | compact-date feeds |
+| `{date_b64}` | `MjAyNi0wNy0xNC56aXA=` (base64 of `2026-07-14.zip`) | WhoisDS download links |
+
+This works with WhoisDS's downloadable lists and most paid drop feeds
+(DropCatch, ExpiredDomains exports, registrar drop lists…). A day's list is
+published **after** the registry finishes deleting for that day, so schedule
+cron accordingly (see below) — and note that each provider defines the date
+slightly differently (deleted *on* that date vs. published that morning).
 
 Until then, the built-in **mock feed** generates realistic sample drops so you
 can explore and demo everything offline.
