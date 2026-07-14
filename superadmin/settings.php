@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
     $fields = [
         'hero_title', 'hero_subtitle', 'upgrade_note',
-        'drops_provider', 'drops_url', 'drops_exact_len', 'drops_tlds', 'drops_max_keep',
+        'drops_provider', 'drops_url', 'drops_exact_len', 'drops_tlds', 'drops_max_keep', 'drops_day_offset',
         'namecom_username', 'namecom_token',
         'ai_api_key', 'ai_model', 'ai_max_per_fetch',
         'mail_enabled', 'mail_to', 'mail_from',
@@ -64,6 +64,14 @@ layout_header('Settings', 'admin');
             <div>
                 <label>Max kept per fetch</label>
                 <input name="drops_max_keep" type="number" min="10" max="10000" value="<?= (int)$drops['max_keep'] ?>">
+            </div>
+            <div>
+                <label>Daily fetch pulls</label>
+                <select name="drops_day_offset">
+                    <option value="1" <?= (int)$drops['day_offset'] === 1 ? 'selected' : '' ?>>yesterday's list (last 24h — recommended)</option>
+                    <option value="0" <?= (int)$drops['day_offset'] === 0 ? 'selected' : '' ?>>today's list</option>
+                    <option value="2" <?= (int)$drops['day_offset'] === 2 ? 'selected' : '' ?>>2 days ago</option>
+                </select>
             </div>
         </div>
         <label>Feed URL (used when provider is "URL feed")</label>

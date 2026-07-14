@@ -20,9 +20,12 @@ use Domainzs\DropEngine;
 use Domainzs\DropsClient;
 use Domainzs\Notifier;
 
-$date = isset($argv[1]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $argv[1]) ? $argv[1] : date('Y-m-d');
+// With no argument, the engine fetches the most recent *published* list
+// (yesterday by default — the "Daily fetch pulls" setting controls it).
+$date = isset($argv[1]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $argv[1]) ? $argv[1] : null;
 
 $stats = (new DropEngine($pdo, $config))->run($date);
+$date  = $stats['date'];
 
 $top = $pdo->prepare('SELECT domain, score FROM drops WHERE dropped_date = ? ORDER BY score DESC LIMIT 5');
 $top->execute([$date]);
@@ -34,6 +37,9 @@ $mock  = (new DropsClient(drops_config($config)))->isMock() ? ' [MOCK feed]' : '
 $stamp = date('Y-m-d H:i:s');
 echo "[{$stamp}] {$date}: {$stats['raw']} in feed → {$stats['matched']} matched filter → {$stats['added']} new"
     . " · {$stats['verified']} availability-verified · {$stats['ai_rated']} AI-rated{$mock}\n";
+if (!empty($stats['error'])) {
+    echo "  FEED PROBLEM: {$stats['error']}\n";
+}
 foreach ($topDrops as $drop) {
     echo "  {$drop['score']}  {$drop['domain']}\n";
 }

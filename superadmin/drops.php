@@ -20,7 +20,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $top   = $pdo->prepare('SELECT domain, score FROM drops WHERE dropped_date = ? ORDER BY score DESC LIMIT 5');
         $top->execute([$date]);
         (new Notifier($config))->sendFetchDigest($date, $stats, $top->fetchAll());
-        flash('success', "Fetched {$date}: {$stats['raw']} in feed → {$stats['matched']} matched filter → "
+        if (!empty($stats['error'])) {
+            flash('error', "Fetch problem for {$date}: {$stats['error']}");
+        }
+        flash($stats['added'] > 0 ? 'success' : 'info',
+            "Fetched {$date}: {$stats['raw']} in feed → {$stats['matched']} matched filter → "
             . "{$stats['added']} new · {$stats['verified']} availability-verified · {$stats['ai_rated']} AI-rated.");
     } elseif ($action === 'delete') {
         $pdo->prepare('DELETE FROM drops WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
@@ -87,7 +91,8 @@ layout_header('Drops', 'admin');
         <input type="hidden" name="action" value="fetch">
         <div class="scanpanel-field">
             <label for="fdate">Drop date</label>
-            <input id="fdate" name="date" type="date" value="<?= e(date('Y-m-d')) ?>">
+            <input id="fdate" name="date" type="date"
+                   value="<?= e(date('Y-m-d', time() - max(0, (int)$dropsCfg['day_offset']) * 86400)) ?>">
         </div>
         <button class="btn btn-scan" type="submit">📡 Fetch &amp; rate now</button>
     </form>

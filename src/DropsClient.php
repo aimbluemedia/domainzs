@@ -19,8 +19,16 @@ namespace Domainzs;
  */
 final class DropsClient
 {
+    private ?string $lastError = null;
+
     public function __construct(private array $cfg)
     {
+    }
+
+    /** Why the last fetch() returned nothing — null when it succeeded. */
+    public function lastError(): ?string
+    {
+        return $this->lastError;
     }
 
     public function isMock(): bool
@@ -33,6 +41,8 @@ final class DropsClient
      */
     public function fetch(string $date): array
     {
+        $this->lastError = null;
+
         if ($this->isMock()) {
             return $this->mockList($date);
         }
@@ -48,8 +58,16 @@ final class DropsClient
         }
 
         // Zip archives: extract the first entry (WhoisDS ships a zip of one .txt).
-        if (str_starts_with($body, "PK\x03\x04") && class_exists(\ZipArchive::class)) {
-            $body = $this->unzipFirst($body) ?? '';
+        if (str_starts_with($body, "PK\x03\x04")) {
+            if (!class_exists(\ZipArchive::class)) {
+                $this->lastError = 'feed is a zip but the PHP zip extension is not installed';
+                return [];
+            }
+            $body = $this->unzipFirst($body);
+            if ($body === null) {
+                $this->lastError = 'could not extract the zip the feed returned';
+                return [];
+            }
         }
 
         $domains = [];
@@ -58,6 +76,10 @@ final class DropsClient
             if ($line !== '' && str_contains($line, '.') && !str_starts_with($line, '#')) {
                 $domains[] = $line;
             }
+        }
+        if (!$domains) {
+            $this->lastError = 'the feed responded but contained no domains'
+                . (stripos($body, '<html') !== false ? ' (it returned an HTML page — a login wall or error page, not a list)' : '');
         }
         return $domains;
     }
@@ -73,9 +95,17 @@ final class DropsClient
             CURLOPT_USERAGENT      => 'domainzs/1.0',
         ]);
         $body = curl_exec($ch);
+        $err  = curl_error($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         curl_close($ch);
-        return ($code === 200 && is_string($body)) ? $body : null;
+
+        if ($code === 200 && is_string($body)) {
+            return $body;
+        }
+        $this->lastError = $code > 0
+            ? "feed returned HTTP {$code}" . ($code === 404 ? " — that date's list may not be published yet (try yesterday)" : '')
+            : 'could not reach the feed' . ($err !== '' ? " ({$err})" : '');
+        return null;
     }
 
     private function unzipFirst(string $zipBytes): ?string

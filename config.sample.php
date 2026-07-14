@@ -45,6 +45,9 @@ return [
         'tlds'      => getenv('DROPS_TLDS') ?: 'com',
         // Safety cap per fetch (a full day's .com drop list is 100k+ lines).
         'max_keep'  => (int)(getenv('DROPS_MAX_KEEP') ?: 500),
+        // Cron (no explicit date) fetches the list from this many days ago —
+        // most feeds publish a completed day the next morning, so 1 = yesterday.
+        'day_offset' => (int)(getenv('DROPS_DAY_OFFSET') ?: 1),
     ],
 
     // --- name.com API (recommended) ---
