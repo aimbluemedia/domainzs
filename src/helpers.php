@@ -147,6 +147,9 @@ function drops_config(array $config): array
         'exact_len' => (int)(setting('drops_exact_len', (string)($file['exact_len'] ?? 9)) ?? 9),
         'tlds'      => setting('drops_tlds', (string)($file['tlds'] ?? 'com')),
         'max_keep'  => (int)(setting('drops_max_keep', (string)($file['max_keep'] ?? 500)) ?? 500),
+        // When no date is given (cron), fetch the list from this many days ago.
+        // Most feeds publish a completed day the next morning, so 1 = yesterday.
+        'day_offset' => (int)(setting('drops_day_offset', (string)($file['day_offset'] ?? 1)) ?? 1),
     ];
 }
 

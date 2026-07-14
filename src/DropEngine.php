@@ -29,12 +29,15 @@ final class DropEngine
      */
     public function run(?string $date = null): array
     {
-        $date  = $date ?: date('Y-m-d');
         $drops = drops_config($this->config);
+        // No explicit date (cron): fetch the most recent *published* list —
+        // most feeds publish a completed day the next morning (day_offset 1).
+        $date = $date ?: date('Y-m-d', time() - max(0, (int)$drops['day_offset']) * 86400);
 
         // 1. Fetch.
         $client = new DropsClient($drops);
         $raw    = $client->fetch($date);
+        $error  = $client->lastError();
 
         // 2. Filter.
         $tlds     = array_filter(array_map('trim', explode(',', strtolower($drops['tlds']))));
@@ -82,11 +85,13 @@ final class DropEngine
         $aiRated = $this->aiRateTop($date);
 
         return [
+            'date'     => $date,
             'raw'      => count($raw),
             'matched'  => count($matched),
             'added'    => $added,
             'verified' => $verified,
             'ai_rated' => $aiRated,
+            'error'    => $error,
         ];
     }
 
