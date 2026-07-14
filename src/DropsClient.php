@@ -9,9 +9,13 @@ namespace Domainzs;
  * Providers:
  *   'mock' — deterministic generated sample drops, zero network calls.
  *   'url'  — any URL returning one domain per line (.txt/.csv, or a .zip
- *            containing such a file). "{date}" in the URL is replaced with
- *            the requested YYYY-MM-DD. Works with WhoisDS downloads and most
- *            paid drop-list feeds.
+ *            containing such a file). Date placeholders in the URL are
+ *            replaced with the day being fetched:
+ *              {date}      → 2026-07-14
+ *              {date_ymd}  → 20260714
+ *              {date_b64}  → MjAyNi0wNy0xNC56aXA=   (base64 of "2026-07-14.zip",
+ *                             the format WhoisDS download links use)
+ *            Works with WhoisDS downloads and most paid drop-list feeds.
  */
 final class DropsClient
 {
@@ -33,7 +37,11 @@ final class DropsClient
             return $this->mockList($date);
         }
 
-        $url  = str_replace('{date}', $date, (string)$this->cfg['url']);
+        $url = strtr((string)$this->cfg['url'], [
+            '{date}'     => $date,
+            '{date_ymd}' => str_replace('-', '', $date),
+            '{date_b64}' => base64_encode($date . '.zip'),
+        ]);
         $body = $this->download($url);
         if ($body === null) {
             return [];

@@ -67,9 +67,11 @@ layout_header('Settings', 'admin');
             </div>
         </div>
         <label>Feed URL (used when provider is "URL feed")</label>
-        <input name="drops_url" value="<?= e($drops['url']) ?>" placeholder="https://…/deleted-domains/{date}.zip">
-        <p class="field-help">Any URL returning one domain per line (txt/csv, zip supported). <code>{date}</code> is replaced
-        with YYYY-MM-DD. Works with WhoisDS downloads and most paid drop feeds.</p>
+        <input name="drops_url" value="<?= e($drops['url']) ?>" placeholder="https://www.whoisds.com/whois-database/newly-registered-domains/{date_b64}/nrd">
+        <p class="field-help">Any URL returning one domain per line (txt/csv, zip supported). Date placeholders are
+        replaced with the day being fetched: <code>{date}</code> → 2026-07-14 · <code>{date_ymd}</code> → 20260714 ·
+        <code>{date_b64}</code> → base64 of "2026-07-14.zip" (the format WhoisDS links use). Works with WhoisDS
+        downloads and most paid drop feeds.</p>
     </div>
 
     <div class="panel">
