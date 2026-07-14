@@ -25,6 +25,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'delete') {
         $pdo->prepare('DELETE FROM drops WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
         flash('success', 'Drop deleted.');
+    } elseif ($action === 'delete_batch') {
+        // Wipe a whole day's batch (e.g. to clear out mock sample data).
+        $batchDate = (string)($_POST['batch_date'] ?? '');
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $batchDate)) {
+            $stmt = $pdo->prepare('DELETE FROM drops WHERE dropped_date = ?');
+            $stmt->execute([$batchDate]);
+            flash('success', "Deleted the {$batchDate} batch ({$stmt->rowCount()} drops).");
+        } else {
+            flash('error', 'Pick a batch date to delete.');
+        }
     } elseif ($action === 'list') {
         // Push a drop to the public marketplace with a score-based asking price.
         $stmt = $pdo->prepare('SELECT * FROM drops WHERE id = ?');
@@ -93,6 +103,15 @@ layout_header('Drops', 'admin');
     <input name="q" value="<?= e($q) ?>" placeholder="Contains…">
     <button class="btn" type="submit">Filter</button>
 </form>
+<?php if ($date !== ''): ?>
+<form class="inline" method="post" style="margin:-8px 0 18px;display:block"
+      onsubmit="return confirm('Delete ALL drops from the <?= e($date) ?> batch? Members\' favorites on them are removed too.')">
+    <?= csrf_field() ?>
+    <input type="hidden" name="action" value="delete_batch">
+    <input type="hidden" name="batch_date" value="<?= e($date) ?>">
+    <button class="btn btn-sm btn-danger" type="submit">🗑 Delete entire <?= e($date) ?> batch</button>
+</form>
+<?php endif; ?>
 
 <?php if (!$drops): ?>
     <div class="empty">No drops match. Run a fetch above to pull the latest list.</div>
