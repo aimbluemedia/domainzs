@@ -95,9 +95,16 @@ The whole app runs from a **single folder** — the domain's document root.
 
 ## The drop feed
 
-Set **provider = URL feed** in `/superadmin/settings.php` and paste a URL that
-returns one domain per line (`.txt`, `.csv`, or a `.zip` of one). Date
-placeholders in the URL are replaced with the day being fetched:
+**Recommended: WhoisFreaks.** Get an API key from https://whoisfreaks.com
+(billing dashboard), then in `/superadmin/settings.php` set provider to
+**WhoisFreaks API** and paste the key. The fetcher downloads their daily
+dropped-domains file (`api.whoisfreaks.com/v1.0/whois/droppeddomains`,
+names-only CSV). If your dashboard shows a different download link, paste it
+into the URL-override field with `{date}` and `{apiKey}` placeholders.
+
+**Alternative: any custom URL.** Set provider to **URL feed** and paste a URL
+that returns one domain per line (`.txt`, `.csv`, or a `.zip`/`.gz` of one).
+Date placeholders in the URL are replaced with the day being fetched:
 
 | Placeholder | Becomes | Used by |
 |---|---|---|

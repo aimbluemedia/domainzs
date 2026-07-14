@@ -142,8 +142,10 @@ function drops_config(array $config): array
 {
     $file = $config['drops'] ?? [];
     return [
-        'provider'  => setting('drops_provider', (string)($file['provider'] ?? 'mock')),
-        'url'       => setting('drops_url', (string)($file['url'] ?? '')),
+        'provider'   => setting('drops_provider', (string)($file['provider'] ?? 'mock')),
+        'url'        => setting('drops_url', (string)($file['url'] ?? '')),
+        'wf_api_key' => setting('whoisfreaks_api_key', (string)($file['whoisfreaks_api_key'] ?? '')),
+        'wf_url'     => setting('whoisfreaks_url', (string)($file['whoisfreaks_url'] ?? '')),
         'exact_len' => (int)(setting('drops_exact_len', (string)($file['exact_len'] ?? 9)) ?? 9),
         'tlds'      => setting('drops_tlds', (string)($file['tlds'] ?? 'com')),
         'max_keep'  => (int)(setting('drops_max_keep', (string)($file['max_keep'] ?? 500)) ?? 500),

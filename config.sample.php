@@ -32,13 +32,19 @@ return [
 
     // --- Dropped-domain feed ---
     // provider:
-    //   'mock' — generated sample drops, no network calls (great for exploring)
-    //   'url'  — any URL returning a plain-text list of domains (one per line,
-    //            .zip / .txt / .csv supported). Use {date} as a YYYY-MM-DD
-    //            placeholder, e.g. a WhoisDS / paid feed download link.
+    //   'mock'        — generated sample drops, no network calls (for exploring)
+    //   'whoisfreaks' — WhoisFreaks Expired & Dropped Domains API (recommended).
+    //                   Set the API key from whoisfreaks.com → billing dashboard.
+    //   'url'         — any URL returning a plain-text list of domains (one per
+    //                   line, .zip / .txt / .csv). Use {date} as a YYYY-MM-DD
+    //                   placeholder, e.g. a WhoisDS / paid feed download link.
     'drops' => [
         'provider'  => getenv('DROPS_PROVIDER') ?: 'mock',
         'url'       => getenv('DROPS_URL') ?: '',
+        'whoisfreaks_api_key' => getenv('WHOISFREAKS_API_KEY') ?: '',
+        // Only needed if WhoisFreaks' download link differs from the built-in
+        // default — paste it with {date} and {apiKey} placeholders.
+        'whoisfreaks_url'     => getenv('WHOISFREAKS_URL') ?: '',
         // The filter: keep only SLDs of exactly this length…
         'exact_len' => (int)(getenv('DROPS_EXACT_LEN') ?: 9),
         // …on these TLDs (comma-separated, no dots).

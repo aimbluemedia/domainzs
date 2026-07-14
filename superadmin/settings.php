@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fields = [
         'hero_title', 'hero_subtitle', 'upgrade_note',
         'drops_provider', 'drops_url', 'drops_exact_len', 'drops_tlds', 'drops_max_keep', 'drops_day_offset',
+        'whoisfreaks_api_key', 'whoisfreaks_url',
         'namecom_username', 'namecom_token',
         'ai_api_key', 'ai_model', 'ai_max_per_fetch',
         'mail_enabled', 'mail_to', 'mail_from',
@@ -49,8 +50,9 @@ layout_header('Settings', 'admin');
             <div>
                 <label>Provider</label>
                 <select name="drops_provider">
-                    <option value="mock" <?= $drops['provider'] !== 'url' ? 'selected' : '' ?>>Mock (sample data)</option>
-                    <option value="url" <?= $drops['provider'] === 'url' ? 'selected' : '' ?>>URL feed (live)</option>
+                    <option value="mock" <?= !in_array($drops['provider'], ['url', 'whoisfreaks'], true) ? 'selected' : '' ?>>Mock (sample data)</option>
+                    <option value="whoisfreaks" <?= $drops['provider'] === 'whoisfreaks' ? 'selected' : '' ?>>WhoisFreaks API (recommended)</option>
+                    <option value="url" <?= $drops['provider'] === 'url' ? 'selected' : '' ?>>URL feed (custom)</option>
                 </select>
             </div>
             <div>
@@ -74,12 +76,21 @@ layout_header('Settings', 'admin');
                 </select>
             </div>
         </div>
+        <label>WhoisFreaks API key (used when provider is "WhoisFreaks API")</label>
+        <input name="whoisfreaks_api_key" value="<?= e($drops['wf_api_key']) ?>" autocomplete="off"
+               placeholder="from whoisfreaks.com → billing dashboard">
+        <label>WhoisFreaks URL override (optional)</label>
+        <input name="whoisfreaks_url" value="<?= e($drops['wf_url']) ?>"
+               placeholder="only if your dashboard's download link differs — use {date} and {apiKey}">
+        <p class="field-help">Default endpoint: <code>api.whoisfreaks.com/v1.0/whois/droppeddomains?whois=false&amp;date={date}&amp;apiKey=…</code>
+        If WhoisFreaks gives you a different download link, paste it above with <code>{date}</code> and
+        <code>{apiKey}</code> placeholders — no code change needed.</p>
+
         <label>Feed URL (used when provider is "URL feed")</label>
-        <input name="drops_url" value="<?= e($drops['url']) ?>" placeholder="https://www.whoisds.com/whois-database/newly-registered-domains/{date_b64}/nrd">
-        <p class="field-help">Any URL returning one domain per line (txt/csv, zip supported). Date placeholders are
+        <input name="drops_url" value="<?= e($drops['url']) ?>" placeholder="https://…/{date}.zip">
+        <p class="field-help">Any URL returning one domain per line (txt/csv, zip/gzip supported). Date placeholders are
         replaced with the day being fetched: <code>{date}</code> → 2026-07-14 · <code>{date_ymd}</code> → 20260714 ·
-        <code>{date_b64}</code> → base64 of "2026-07-14.zip" (the format WhoisDS links use). Works with WhoisDS
-        downloads and most paid drop feeds.</p>
+        <code>{date_b64}</code> → base64 of "2026-07-14.zip" (the format WhoisDS links use).</p>
     </div>
 
     <div class="panel">
