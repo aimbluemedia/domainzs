@@ -31,9 +31,13 @@ Built with **PHP 8** + **MySQL/MariaDB** — no framework, no build step.
    real-word detection ("cloudforge" = cloud + forge), startup-style suffixes,
    consonant clusters, digits/hyphens, rare letters… each score comes with
    plain-English reasons.
-4. The day's top names are re-verified via **RDAP** (free, no API key —
-   a 404 means the domain is still available) and optionally sent to
-   **Claude** for an AI rating, one-line comment, and resale value estimate.
+4. The day's top names are re-verified for availability. With the
+   **name.com API** configured (Settings → name.com API), this is a bulk
+   check — 50 domains per call — that also returns the **real registration
+   price** shown on the drop board. Without it, the app falls back to free
+   per-domain **RDAP** lookups (no prices). The best names are optionally
+   sent to **Claude** for an AI rating, one-line comment, and resale value
+   estimate.
 5. Members browse the board; you register the keepers and list them on the
    marketplace with one click. Offers land in your admin inbox + email.
 
@@ -48,6 +52,8 @@ Built with **PHP 8** + **MySQL/MariaDB** — no framework, no build step.
 - PHP 8.1+ with `pdo_mysql`, `curl` (and `zip` for zipped feeds)
 - MySQL 5.7+ / MariaDB 10.3+
 - A dropped-domains feed URL (see below) — optional until you go live
+- (Optional) name.com API token for bulk availability checks + live
+  registration prices — https://www.name.com/account/settings/api
 - (Optional) Anthropic API key for AI ratings — https://console.anthropic.com/
 
 ---
@@ -156,7 +162,8 @@ src/                    Application code — blocked from web
   DropsClient.php       Feed download: mock / URL (txt, csv, zip)
   Scorer.php            Heuristic 0–99 rating with reasons
   DropEngine.php        Fetch → filter → score → verify → AI pipeline
-  RdapClient.php        Availability checks (free RDAP)
+  NameComClient.php     name.com API: bulk availability + registration prices
+  RdapClient.php        Availability checks (free RDAP fallback)
   AiRater.php           Claude ratings (+ heuristic mock fallback)
   Notifier.php          Offer alerts + fetch digests
 bin/                    CLI scripts — blocked from web

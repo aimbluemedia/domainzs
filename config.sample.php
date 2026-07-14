@@ -47,7 +47,19 @@ return [
         'max_keep'  => (int)(getenv('DROPS_MAX_KEEP') ?: 500),
     ],
 
-    // --- RDAP availability verification ---
+    // --- name.com API (recommended) ---
+    // Create an API token at https://www.name.com/account/settings/api.
+    // When configured, the day's top drops are availability-checked in bulk
+    // through name.com (50 per call) with real registration prices — instead
+    // of one-by-one RDAP lookups. Also manageable in /superadmin/settings.php.
+    'namecom' => [
+        'username' => getenv('NAMECOM_USERNAME') ?: '',
+        'token'    => getenv('NAMECOM_TOKEN') ?: '',
+        // true = use the api.dev.name.com test environment (needs its own token).
+        'test'     => (bool)(getenv('NAMECOM_TEST') ?: false),
+    ],
+
+    // --- RDAP availability verification (fallback when name.com is not set) ---
     // The top-scored drops are re-verified via RDAP (free, no API key) so the
     // member area shows live availability. rdap.org 404 == available.
     'rdap' => [
