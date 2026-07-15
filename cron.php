@@ -2,46 +2,64 @@
 declare(strict_types=1);
 
 /**
- * Web-triggerable cron endpoint (for Hostinger URL cron, UptimeRobot, etc.).
+ * Cron entry point — runs the full daily pipeline: fetch the drop list,
+ * filter, score, verify (name.com / RDAP), Moz, AI-rate, then build the
+ * Daily Recap. Works two ways, both protected by the secret key in Settings:
  *
- *   https://your-domain.com/cron.php?key=YOUR_SECRET_KEY
+ *   Command cron (recommended — also does the free RDAP availability check):
+ *     /usr/bin/php /home/USER/domains/your-domain.com/public_html/cron.php <KEY> daily
  *
- * Runs the same daily pipeline as bin/fetch.php — fetch the drop list, filter,
- * score, verify (name.com), AI-rate — then generates the Daily Recap. Protected
- * by a secret key stored in Settings (regenerate it there anytime).
+ *   URL cron (no SSH needed):
+ *     https://your-domain.com/cron.php?key=<KEY>
  *
- * Prefer the command cron if you can:  php .../bin/fetch.php
- * (that path also does the free RDAP availability fallback, which is skipped
- *  here to keep the web request fast).
+ * The trailing "daily" (or any task word) is accepted and ignored — there is
+ * one job. An optional YYYY-MM-DD argument overrides which day is fetched.
  */
 
 require __DIR__ . '/src/bootstrap.php';
 
 use Domainzs\DropEngine;
 use Domainzs\DailyRecap;
-use Domainzs\DropsClient;
 use Domainzs\Notifier;
 
-header('Content-Type: text/plain; charset=utf-8');
+$isCli = (PHP_SAPI === 'cli');
+if (!$isCli) {
+    header('Content-Type: text/plain; charset=utf-8');
+}
 
-// --- Auth: constant-time key check ---
+/** End the run with a message; HTTP status for web, exit code for CLI. */
+$fail = function (int $status, string $msg) use ($isCli): never {
+    if (!$isCli) {
+        http_response_code($status);
+    }
+    fwrite($isCli ? STDERR : STDOUT, $msg . "\n");
+    exit($isCli ? 1 : 0);
+};
+
+// --- Auth: key from the CLI argument, or ?key= on the URL (constant-time) ---
 $configured = (string) setting('cron_key', '');
-$provided   = (string) ($_GET['key'] ?? $_GET['token'] ?? '');
-if ($configured === '' ) {
-    http_response_code(503);
-    exit("Cron key not set. Open Settings → Automation and save a key first.\n");
+$provided   = $isCli
+    ? (string) ($argv[1] ?? '')
+    : (string) ($_GET['key'] ?? $_GET['token'] ?? '');
+
+if ($configured === '') {
+    $fail(503, 'Cron key not set. Open Settings → Automation and save a key first.');
 }
 if ($provided === '' || !hash_equals($configured, $provided)) {
-    http_response_code(403);
-    exit("Forbidden — bad or missing key.\n");
+    $fail(403, 'Forbidden — bad or missing cron key.');
 }
 
-@set_time_limit(300);
+@set_time_limit(600);
 ignore_user_abort(true);
 
-// Optional explicit date (?date=YYYY-MM-DD); otherwise the configured default.
-$dateArg = isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$_GET['date'])
-    ? (string)$_GET['date'] : null;
+// Optional explicit date (a YYYY-MM-DD arg on the CLI, or ?date= on the URL).
+$dateArg = null;
+$candidates = $isCli ? array_slice($argv, 1) : [(string) ($_GET['date'] ?? '')];
+foreach ($candidates as $a) {
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $a)) {
+        $dateArg = (string) $a;
+    }
+}
 
 $stats = (new DropEngine($pdo, $config))->run($dateArg);
 $date  = $stats['date'];
@@ -58,7 +76,7 @@ if (!empty($stats['error'])) {
     echo "FEED PROBLEM: {$stats['error']}\n";
 }
 
-// Daily Recap (best-effort — never 500 the cron over it).
+// Daily Recap (best-effort — never fail the cron over it).
 if ($stats['matched'] > 0) {
     try {
         $recap = (new DailyRecap($pdo, $config))->forDate($date);
