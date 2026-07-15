@@ -44,8 +44,10 @@ if ($cronKey === '') {
     $cronKey = bin2hex(random_bytes(16));
     set_setting('cron_key', $cronKey);
 }
-$scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$cronUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'your-domain.com') . '/cron.php?key=' . $cronKey;
+$scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$cronUrl  = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'your-domain.com') . '/cron.php?key=' . $cronKey;
+// Real server path to cron.php, so the command cron is copy-paste ready.
+$cronCmd  = '/usr/bin/php ' . APP_ROOT . '/cron.php ' . $cronKey . ' daily';
 
 $drops   = drops_config($config);
 $namecom = namecom_config($config);
@@ -67,8 +69,9 @@ layout_header('Settings', 'admin');
     <p class="field-help">In hPanel → Advanced → Cron Jobs, choose a "wget/URL" job (or paste
     <code>wget -q -O /dev/null "<?= e($cronUrl) ?>"</code> as a command). Keep this URL secret — the key protects it.</p>
 
-    <label style="margin-top:14px"><strong>Option B — command cron</strong> (also does free RDAP availability): </label>
-    <input class="copy-field" value="php ~/domains/<?= e($_SERVER['HTTP_HOST'] ?? 'your-domain.com') ?>/public_html/bin/fetch.php" readonly onclick="this.select()">
+    <label style="margin-top:14px"><strong>Option B — command cron</strong> (recommended — also does free RDAP availability): paste this exact command in hPanel → Cron Jobs</label>
+    <input class="copy-field" value="<?= e($cronCmd) ?>" readonly onclick="this.select()">
+    <p class="field-help">Schedule it once a day (e.g. minute 30, hour 6). The trailing <code>daily</code> is just a label.</p>
 
     <form method="post" style="margin-top:14px">
         <?= csrf_field() ?>
