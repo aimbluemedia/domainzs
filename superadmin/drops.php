@@ -65,10 +65,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('/superadmin/drops.php');
 }
 
-$q    = trim((string)($_GET['q'] ?? ''));
-$date = (string)($_GET['date'] ?? '');
+$q     = trim((string)($_GET['q'] ?? ''));
+$date  = (string)($_GET['date'] ?? '');
+$len   = (int)($_GET['len'] ?? 0);
+$min   = (int)($_GET['min'] ?? 0);
+$avail = (string)($_GET['avail'] ?? '');
+$sort  = (string)($_GET['sort'] ?? 'score');
+
 $dates = $pdo->query('SELECT DISTINCT dropped_date FROM drops ORDER BY dropped_date DESC LIMIT 30')
     ->fetchAll(PDO::FETCH_COLUMN);
+$lengths = $pdo->query('SELECT DISTINCT len FROM drops ORDER BY len')->fetchAll(PDO::FETCH_COLUMN);
 
 $where  = '1=1';
 $params = [];
@@ -77,14 +83,35 @@ if ($date !== '') {
     $params[] = $date;
 }
 if ($q !== '') {
-    $where   .= ' AND domain LIKE ?';
+    $where   .= ' AND sld LIKE ?';
     $params[] = '%' . $q . '%';
 }
+if ($len > 0) {
+    $where   .= ' AND len = ?';
+    $params[] = $len;
+}
+if ($min > 0) {
+    $where   .= ' AND score >= ?';
+    $params[] = $min;
+}
+if (in_array($avail, ['available', 'registered', 'unknown'], true)) {
+    $where   .= ' AND availability = ?';
+    $params[] = $avail;
+}
+
+$orderBy = match ($sort) {
+    'newest'  => 'dropped_date DESC, score DESC',
+    'oldest'  => 'dropped_date ASC, score DESC',
+    'az'      => 'sld ASC',
+    'da'      => 'moz_da DESC, score DESC',
+    default   => 'score DESC, dropped_date DESC',
+};
+
 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM drops WHERE {$where}");
 $countStmt->execute($params);
 $totalMatching = (int)$countStmt->fetchColumn();
 
-$stmt = $pdo->prepare("SELECT * FROM drops WHERE {$where} ORDER BY dropped_date DESC, score DESC LIMIT 200");
+$stmt = $pdo->prepare("SELECT * FROM drops WHERE {$where} ORDER BY {$orderBy} LIMIT 200");
 $stmt->execute($params);
 $drops = $stmt->fetchAll();
 
@@ -110,15 +137,37 @@ layout_header('Drops', 'admin');
     </form>
 </div>
 
-<form class="filterrow" method="get">
-    <select name="date">
+<form class="searchbar" method="get" action="/superadmin/drops.php">
+    <input class="searchbar-input" type="search" name="q" value="<?= e($q) ?>" placeholder="Search names — contains…">
+    <select class="searchbar-select" name="len" title="Name length">
+        <option value="0">Any length</option>
+        <?php foreach ($lengths as $l): ?>
+        <option value="<?= (int)$l ?>" <?= $len === (int)$l ? 'selected' : '' ?>><?= (int)$l ?> characters</option>
+        <?php endforeach; ?>
+    </select>
+    <select class="searchbar-select" name="date" title="Drop date">
         <option value="">All dates</option>
         <?php foreach ($dates as $d): ?>
         <option value="<?= e($d) ?>" <?= $d === $date ? 'selected' : '' ?>><?= e($d) ?></option>
         <?php endforeach; ?>
     </select>
-    <input name="q" value="<?= e($q) ?>" placeholder="Contains…">
-    <button class="btn" type="submit">Filter</button>
+    <select class="searchbar-select" name="min" title="Minimum score">
+        <?php foreach ([0 => 'Any score', 50 => '50+', 65 => '65+', 75 => '75+ (hot)', 85 => '85+ (🔥)'] as $v => $lbl): ?>
+        <option value="<?= $v ?>" <?= $min === $v ? 'selected' : '' ?>><?= e($lbl) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <select class="searchbar-select" name="avail" title="Availability">
+        <?php foreach (['' => 'Any status', 'available' => '✅ Available', 'registered' => '❌ Taken', 'unknown' => 'Unchecked'] as $v => $lbl): ?>
+        <option value="<?= e($v) ?>" <?= $avail === $v ? 'selected' : '' ?>><?= e($lbl) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <select class="searchbar-select" name="sort" title="Sort by">
+        <?php foreach (['score' => 'Best score', 'newest' => 'Newest', 'oldest' => 'Oldest', 'az' => 'A → Z', 'da' => 'Domain Authority'] as $v => $lbl): ?>
+        <option value="<?= e($v) ?>" <?= $sort === $v ? 'selected' : '' ?>><?= e($lbl) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <button class="btn-search" type="submit">Search</button>
+    <a class="btn btn-reset" href="/superadmin/drops.php">Reset</a>
 </form>
 <?php if ($date !== ''): ?>
 <form class="inline" method="post" style="margin:-8px 0 18px;display:block"
