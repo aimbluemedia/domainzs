@@ -43,3 +43,17 @@ if (!empty($stats['error'])) {
 foreach ($topDrops as $drop) {
     echo "  {$drop['score']}  {$drop['domain']}\n";
 }
+
+// Generate the day's Daily Recap (best-effort — never let it break the fetch).
+// Only creates one if today's is missing; regenerate from the admin page.
+if ($stats['added'] > 0 || $stats['matched'] > 0) {
+    try {
+        $recap = (new \Domainzs\DailyRecap($pdo, $config))->forDate($date);
+        if ($recap !== null) {
+            echo '  recap: ' . ($recap['is_ai'] ? 'AI' : 'heuristic')
+                . ' — top pick ' . ($recap['body']['top_pick']['domain'] ?? '(none)') . "\n";
+        }
+    } catch (\Throwable $e) {
+        echo "  recap skipped: {$e->getMessage()}\n";
+    }
+}

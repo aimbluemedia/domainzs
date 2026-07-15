@@ -136,6 +136,21 @@ can explore and demo everything offline.
 30 6 * * *  php /path/to/domainzs/bin/fetch.php >> /var/log/domainzs.log 2>&1
 ```
 
+`bin/fetch.php` also generates that day's **Daily Recap** automatically once
+the batch is in (an AI deep-dive on the best names — top pick, ranked top 10,
+sleeper, build-a-business angle, resale ranges — shown at
+`/superadmin/dailyrecap.php`). To regenerate on its own schedule, or run it
+separately:
+
+```cron
+0 7 * * *  php /path/to/domainzs/bin/recap.php >> /var/log/domainzs.log 2>&1
+```
+
+The recap uses Claude when an Anthropic API key is set (Settings → AI); with no
+key it builds a heuristic recap from the scores so the page always works. Add
+your background under "Personalise the recap" on the Daily Recap page and the
+AI tailors the build-a-business pick to you.
+
 Enable email in **Settings** to get a digest whenever new drops land, plus an
 instant email for every marketplace offer.
 
