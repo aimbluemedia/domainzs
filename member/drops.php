@@ -32,15 +32,16 @@ $q     = trim((string)($_GET['q'] ?? ''));
 $min   = (int)($_GET['min'] ?? 0);
 $len   = (int)($_GET['len'] ?? 0);
 $avail = (string)($_GET['avail'] ?? '');
-$sort  = (string)($_GET['sort'] ?? 'score');
+$sort  = (string)($_GET['sort'] ?? 'len');
 // "All dates" is an explicit empty value; otherwise default to the latest batch.
 $date  = isset($_GET['date']) ? (string)$_GET['date'] : $latestDate;
 
 $orderBy = match ($sort) {
+    'score'  => 'score DESC, dropped_date DESC',
     'newest' => 'dropped_date DESC, score DESC',
     'az'     => 'sld ASC',
     'da'     => 'moz_da DESC, score DESC',
-    default  => 'score DESC, dropped_date DESC',
+    default  => 'len ASC, score DESC',   // shortest first, best score within a length
 };
 
 $drops = [];
@@ -115,7 +116,7 @@ layout_header('Drop Board', 'member');
         <?php endforeach; ?>
     </select>
     <select class="searchbar-select" name="sort" title="Sort by">
-        <?php foreach (['score' => 'Best score', 'newest' => 'Newest', 'az' => 'A → Z', 'da' => 'Domain Authority'] as $v => $label): ?>
+        <?php foreach (['len' => 'Shortest first', 'score' => 'Best score', 'newest' => 'Newest', 'az' => 'A → Z', 'da' => 'Domain Authority'] as $v => $label): ?>
         <option value="<?= e($v) ?>" <?= $sort === $v ? 'selected' : '' ?>><?= e($label) ?></option>
         <?php endforeach; ?>
     </select>

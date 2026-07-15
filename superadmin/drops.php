@@ -70,7 +70,7 @@ $date  = (string)($_GET['date'] ?? '');
 $len   = (int)($_GET['len'] ?? 0);
 $min   = (int)($_GET['min'] ?? 0);
 $avail = (string)($_GET['avail'] ?? '');
-$sort  = (string)($_GET['sort'] ?? 'score');
+$sort  = (string)($_GET['sort'] ?? 'len');
 
 $dates = $pdo->query('SELECT DISTINCT dropped_date FROM drops ORDER BY dropped_date DESC LIMIT 30')
     ->fetchAll(PDO::FETCH_COLUMN);
@@ -99,11 +99,12 @@ if (in_array($avail, ['available', 'registered', 'unknown'], true)) {
 }
 
 $orderBy = match ($sort) {
+    'score'   => 'score DESC, dropped_date DESC',
     'newest'  => 'dropped_date DESC, score DESC',
     'oldest'  => 'dropped_date ASC, score DESC',
     'az'      => 'sld ASC',
     'da'      => 'moz_da DESC, score DESC',
-    default   => 'score DESC, dropped_date DESC',
+    default   => 'len ASC, score DESC',   // shortest first, best score within a length
 };
 
 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM drops WHERE {$where}");
@@ -169,7 +170,7 @@ if ($extraFilters): ?>, <strong><?= e(implode(', ', $extraFilters)) ?></strong><
         <?php endforeach; ?>
     </select>
     <select class="searchbar-select" name="sort" title="Sort by">
-        <?php foreach (['score' => 'Best score', 'newest' => 'Newest', 'oldest' => 'Oldest', 'az' => 'A → Z', 'da' => 'Domain Authority'] as $v => $lbl): ?>
+        <?php foreach (['len' => 'Shortest first', 'score' => 'Best score', 'newest' => 'Newest', 'oldest' => 'Oldest', 'az' => 'A → Z', 'da' => 'Domain Authority'] as $v => $lbl): ?>
         <option value="<?= e($v) ?>" <?= $sort === $v ? 'selected' : '' ?>><?= e($lbl) ?></option>
         <?php endforeach; ?>
     </select>
