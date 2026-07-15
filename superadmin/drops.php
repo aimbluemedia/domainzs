@@ -199,11 +199,12 @@ if ($extraFilters): ?>, <strong><?= e(implode(', ', $extraFilters)) ?></strong><
     <p class="sub" style="margin-bottom:10px"><?= $totalMatching ?> drop(s)<?=
         $totalMatching > count($drops) ? ' — showing the top ' . count($drops) . ' by date &amp; score; use the date filter to see a specific batch' : '' ?></p>
     <table>
-        <tr><th>Domain</th><th>Dropped</th><th>Score</th><th>Why</th><th>DA</th><th>Links</th><th>AI</th><th>Est.</th><th>Avail.</th><th></th></tr>
+        <tr><th>Domain</th><th>Len</th><th>Dropped</th><th>Score</th><th>Why</th><th>DA</th><th>Links</th><th>AI</th><th>Est.</th><th>Avail.</th><th></th></tr>
         <?php foreach ($drops as $d):
             $notes = json_decode((string)$d['score_notes'], true) ?: []; ?>
         <tr>
             <td><strong><?= e($d['domain']) ?></strong></td>
+            <td><span class="lenpill <?= e(length_class((int)$d['len'])) ?>"><?= (int)$d['len'] ?></span></td>
             <td><?= e($d['dropped_date']) ?></td>
             <td><span class="scorepill sc-<?= e(score_class((int)$d['score'])) ?>"><?= (int)$d['score'] ?></span></td>
             <td class="notes-cell"><?= e(implode(' · ', array_slice($notes, 0, 3))) ?></td>
