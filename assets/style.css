@@ -151,6 +151,13 @@ form.stack input, form.stack select, form.stack textarea {
 .sc-meh  { background: rgba(255,176,0,.14); color: var(--amber); border: 1px solid var(--amber); }
 .sc-low  { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
 
+/* Length pills — shorter names are rarer/more valuable, so they run hotter */
+.lenpill { display: inline-block; min-width: 26px; text-align: center; font-weight: 800; font-size: .82rem;
+    padding: 2px 7px; border-radius: 999px; }
+.len-hot   { background: var(--amber); color: #1a1200; }
+.len-good  { background: rgba(29,185,84,.18); color: var(--green); border: 1px solid var(--green-dark); }
+.len-plain { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
+
 /* Status badges */
 .badge-st { display: inline-block; font-weight: 700; font-size: .78rem; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
 .st-free    { background: var(--green);   color: #fff; }

@@ -125,6 +125,14 @@ function split_domain(string $domain): array
     return [substr($domain, 0, $pos), substr($domain, $pos + 1)];
 }
 
+/** CSS badge class for a name length: shorter = more valuable = hotter. */
+function length_class(int $len): string
+{
+    if ($len <= 4) return 'len-hot';   // 3-4 chars: rare & premium
+    if ($len <= 6) return 'len-good';  // 5-6 chars: strong
+    return 'len-plain';                // 7+ chars
+}
+
 /** CSS badge class for a 0-99 score: hot / good / meh / low. */
 function score_class(int $score): string
 {
