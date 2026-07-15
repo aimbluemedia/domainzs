@@ -27,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Checkboxes: absent when unchecked.
     set_setting('mail_enabled', empty($_POST['mail_enabled']) ? '0' : '1');
     set_setting('namecom_test', empty($_POST['namecom_test']) ? '0' : '1');
+    set_setting('drops_no_hyphens', empty($_POST['drops_no_hyphens']) ? '0' : '1');
+    set_setting('drops_no_digits', empty($_POST['drops_no_digits']) ? '0' : '1');
     flash('success', 'Settings saved.');
     redirect('/superadmin/settings.php');
 }
@@ -77,6 +79,10 @@ layout_header('Settings', 'admin');
                     <option value="2" <?= (int)$drops['day_offset'] === 2 ? 'selected' : '' ?>>2 days ago</option>
                 </select>
             </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+            <label class="checkbox"><input type="checkbox" name="drops_no_hyphens" value="1" <?= !empty($drops['no_hyphens']) ? 'checked' : '' ?>> No hyphens (skip names containing "-")</label>
+            <label class="checkbox"><input type="checkbox" name="drops_no_digits" value="1" <?= !empty($drops['no_digits']) ? 'checked' : '' ?>> No digits (skip names containing 0-9)</label>
         </div>
         <p class="field-help"><strong>WhoisFreaks FREE daily list</strong> needs no key — it pulls the ~10,000
         dropped/expired domains WhoisFreaks publishes each day (github.com/WhoisFreaks/daily-expired-and-dropped-domains).

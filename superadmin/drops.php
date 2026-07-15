@@ -119,9 +119,15 @@ $dropsCfg = drops_config($config);
 
 layout_header('Drops', 'admin');
 ?>
+<?php
+$extraFilters = [];
+if (!empty($dropsCfg['no_hyphens'])) { $extraFilters[] = 'no hyphens'; }
+if (!empty($dropsCfg['no_digits']))  { $extraFilters[] = 'no digits'; }
+?>
 <h1>Drops</h1>
 <p class="sub">Filter: exactly <strong><?= (int)$dropsCfg['exact_len'] ?></strong>-character SLDs on
-<strong>.<?= e(str_replace(',', ', .', $dropsCfg['tlds'])) ?></strong> — change it in
+<strong>.<?= e(str_replace(',', ', .', $dropsCfg['tlds'])) ?></strong><?php
+if ($extraFilters): ?>, <strong><?= e(implode(', ', $extraFilters)) ?></strong><?php endif; ?> — change it in
 <a href="/superadmin/settings.php">Settings</a>. Cron runs <code>bin/fetch.php</code> daily; you can also fetch on demand.</p>
 
 <div class="scanpanel">

@@ -44,15 +44,23 @@ final class DropEngine
         $error  = $client->lastError();
 
         // 2. Filter.
-        $tlds     = array_filter(array_map('trim', explode(',', strtolower($drops['tlds']))));
-        $exactLen = max(1, (int)$drops['exact_len']);
-        $matched  = [];
+        $tlds      = array_filter(array_map('trim', explode(',', strtolower($drops['tlds']))));
+        $exactLen  = max(1, (int)$drops['exact_len']);
+        $noHyphens = !empty($drops['no_hyphens']);
+        $noDigits  = !empty($drops['no_digits']);
+        $matched   = [];
         foreach ($raw as $domain) {
             [$sld, $tld] = split_domain($domain);
             if (!in_array($tld, $tlds, true) || strlen($sld) !== $exactLen) {
                 continue;
             }
             if (!preg_match('/^[a-z0-9-]+$/', $sld)) {
+                continue;
+            }
+            if ($noHyphens && str_contains($sld, '-')) {
+                continue;
+            }
+            if ($noDigits && preg_match('/[0-9]/', $sld)) {
                 continue;
             }
             $matched[$domain] = [$sld, $tld];
