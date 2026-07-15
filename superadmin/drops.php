@@ -27,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             "Fetched {$date}: {$stats['raw']} in feed → {$stats['matched']} matched filter → "
             . "{$stats['added']} new · {$stats['verified']} availability-verified · "
             . "{$stats['moz_rated']} Moz-rated · {$stats['ai_rated']} AI-rated.");
+        // Land on the batch that was just fetched, not the default listing.
+        redirect('/superadmin/drops.php?date=' . urlencode($date));
     } elseif ($action === 'delete') {
         $pdo->prepare('DELETE FROM drops WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
         flash('success', 'Drop deleted.');
@@ -78,6 +80,10 @@ if ($q !== '') {
     $where   .= ' AND domain LIKE ?';
     $params[] = '%' . $q . '%';
 }
+$countStmt = $pdo->prepare("SELECT COUNT(*) FROM drops WHERE {$where}");
+$countStmt->execute($params);
+$totalMatching = (int)$countStmt->fetchColumn();
+
 $stmt = $pdo->prepare("SELECT * FROM drops WHERE {$where} ORDER BY dropped_date DESC, score DESC LIMIT 200");
 $stmt->execute($params);
 $drops = $stmt->fetchAll();
@@ -134,6 +140,8 @@ layout_header('Drops', 'admin');
 <?php if (!$drops): ?>
     <div class="empty">No drops match. Run a fetch above to pull the latest list.</div>
 <?php else: ?>
+    <p class="sub" style="margin-bottom:10px"><?= $totalMatching ?> drop(s)<?=
+        $totalMatching > count($drops) ? ' — showing the top ' . count($drops) . ' by date &amp; score; use the date filter to see a specific batch' : '' ?></p>
     <table>
         <tr><th>Domain</th><th>Dropped</th><th>Score</th><th>Why</th><th>DA</th><th>Links</th><th>AI</th><th>Est.</th><th>Avail.</th><th></th></tr>
         <?php foreach ($drops as $d):
