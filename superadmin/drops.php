@@ -29,6 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'delete') {
         $pdo->prepare('DELETE FROM drops WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
         flash('success', 'Drop deleted.');
+    } elseif ($action === 'delete_all') {
+        // Wipe the whole drops table (e.g. clearing mock data before going live).
+        $count = (int)$pdo->query('SELECT COUNT(*) FROM drops')->fetchColumn();
+        $pdo->exec('DELETE FROM drops');
+        flash('success', "Deleted all {$count} drops. Favorites on them were removed too.");
     } elseif ($action === 'delete_batch') {
         // Wipe a whole day's batch (e.g. to clear out mock sample data).
         $batchDate = (string)($_POST['batch_date'] ?? '');
@@ -115,6 +120,13 @@ layout_header('Drops', 'admin');
     <input type="hidden" name="action" value="delete_batch">
     <input type="hidden" name="batch_date" value="<?= e($date) ?>">
     <button class="btn btn-sm btn-danger" type="submit">🗑 Delete entire <?= e($date) ?> batch</button>
+</form>
+<?php elseif ($drops): ?>
+<form class="inline" method="post" style="margin:-8px 0 18px;display:block"
+      onsubmit="return confirm('Delete EVERY drop in the database? Use this to clear mock/sample data. Members\' favorites are removed too. This cannot be undone.')">
+    <?= csrf_field() ?>
+    <input type="hidden" name="action" value="delete_all">
+    <button class="btn btn-sm btn-danger" type="submit">🗑 Delete ALL drops</button>
 </form>
 <?php endif; ?>
 
