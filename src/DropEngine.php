@@ -81,7 +81,10 @@ final class DropEngine
             $verified = $this->verifyTop($date, (int)($this->config['rdap']['verify_top'] ?? 25));
         }
 
-        // 5. AI pass on the very best of the day.
+        // 5. Moz metrics (Domain Authority + linking domains) on the day's best.
+        $mozRated = $this->mozRateTop($date);
+
+        // 6. AI pass on the very best of the day.
         $aiRated = $this->aiRateTop($date);
 
         return [
@@ -89,9 +92,10 @@ final class DropEngine
             'raw'      => count($raw),
             'matched'  => count($matched),
             'added'    => $added,
-            'verified' => $verified,
-            'ai_rated' => $aiRated,
-            'error'    => $error,
+            'verified'  => $verified,
+            'moz_rated' => $mozRated,
+            'ai_rated'  => $aiRated,
+            'error'     => $error,
         ];
     }
 
@@ -149,6 +153,44 @@ final class DropEngine
                 default      => 'unknown',
             };
             $update->execute([$availability, $row['id']]);
+            $count++;
+        }
+        return $count;
+    }
+
+    /** Pull Moz DA / PA / linking domains for the date's top unrated drops. */
+    private function mozRateTop(string $date): int
+    {
+        $moz = new MozClient(moz_config($this->config));
+        if (!$moz->isConfigured()) {
+            return 0;
+        }
+        $limit = max(0, (int)(setting('moz_max_per_fetch', '25') ?? 25));
+        if ($limit === 0) {
+            return 0;
+        }
+        $stmt = $this->pdo->prepare(
+            'SELECT id, domain FROM drops
+             WHERE dropped_date = ? AND moz_da IS NULL
+             ORDER BY score DESC LIMIT ' . $limit
+        );
+        $stmt->execute([$date]);
+        $rows = $stmt->fetchAll();
+        if (!$rows) {
+            return 0;
+        }
+
+        $metrics = $moz->urlMetrics(array_column($rows, 'domain'));
+        $update  = $this->pdo->prepare(
+            'UPDATE drops SET moz_da = ?, moz_pa = ?, moz_links = ? WHERE id = ?'
+        );
+        $count = 0;
+        foreach ($rows as $row) {
+            $m = $metrics[strtolower($row['domain'])] ?? null;
+            if ($m === null) {
+                continue; // API error — stays unrated, retried next fetch
+            }
+            $update->execute([$m['da'], $m['pa'], $m['links'], $row['id']]);
             $count++;
         }
         return $count;

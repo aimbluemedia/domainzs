@@ -65,6 +65,10 @@ CREATE TABLE IF NOT EXISTS drops (
     availability VARCHAR(12)  NOT NULL DEFAULT 'unknown',
     -- Live registration price from the name.com availability check, USD.
     reg_price    DECIMAL(8,2) NULL,
+    -- Moz SEO metrics (fetched for the top-scored drops when configured).
+    moz_da       TINYINT UNSIGNED NULL,   -- Domain Authority 0-100
+    moz_pa       TINYINT UNSIGNED NULL,   -- Page Authority 0-100
+    moz_links    INT UNSIGNED NULL,       -- linking root domains
     -- Optional AI pass (Claude) on the top-scored drops.
     ai_rating    TINYINT UNSIGNED NULL,          -- 0-99
     ai_comment   VARCHAR(300) NULL,

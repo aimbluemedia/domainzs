@@ -56,6 +56,14 @@ return [
         'day_offset' => (int)(getenv('DROPS_DAY_OFFSET') ?: 1),
     ],
 
+    // --- Moz Links API (optional) — Domain Authority + backlink metrics ---
+    // Free credentials at https://moz.com/products/api. When set, the top
+    // drops of each fetch get DA / PA / linking-domain counts on the board.
+    'moz' => [
+        'access_id'  => getenv('MOZ_ACCESS_ID') ?: '',
+        'secret_key' => getenv('MOZ_SECRET_KEY') ?: '',
+    ],
+
     // --- name.com API (recommended) ---
     // Create an API token at https://www.name.com/account/settings/api.
     // When configured, the day's top drops are availability-checked in bulk

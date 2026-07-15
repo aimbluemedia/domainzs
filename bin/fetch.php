@@ -36,7 +36,7 @@ $topDrops = $top->fetchAll();
 $mock  = (new DropsClient(drops_config($config)))->isMock() ? ' [MOCK feed]' : '';
 $stamp = date('Y-m-d H:i:s');
 echo "[{$stamp}] {$date}: {$stats['raw']} in feed → {$stats['matched']} matched filter → {$stats['added']} new"
-    . " · {$stats['verified']} availability-verified · {$stats['ai_rated']} AI-rated{$mock}\n";
+    . " · {$stats['verified']} availability-verified · {$stats['moz_rated']} Moz-rated · {$stats['ai_rated']} AI-rated{$mock}\n";
 if (!empty($stats['error'])) {
     echo "  FEED PROBLEM: {$stats['error']}\n";
 }

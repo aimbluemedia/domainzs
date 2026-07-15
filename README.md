@@ -54,6 +54,8 @@ Built with **PHP 8** + **MySQL/MariaDB** — no framework, no build step.
 - A dropped-domains feed URL (see below) — optional until you go live
 - (Optional) name.com API token for bulk availability checks + live
   registration prices — https://www.name.com/account/settings/api
+- (Optional) Moz API credentials for Domain Authority + linking-domain counts
+  on the top drops — https://moz.com/products/api (free tier)
 - (Optional) Anthropic API key for AI ratings — https://console.anthropic.com/
 
 ---
@@ -95,12 +97,17 @@ The whole app runs from a **single folder** — the domain's document root.
 
 ## The drop feed
 
-**Recommended: WhoisFreaks.** Get an API key from https://whoisfreaks.com
-(billing dashboard), then in `/superadmin/settings.php` set provider to
-**WhoisFreaks API** and paste the key. The fetcher downloads their daily
-dropped-domains file (`api.whoisfreaks.com/v1.0/whois/droppeddomains`,
-names-only CSV). If your dashboard shows a different download link, paste it
-into the URL-override field with `{date}` and `{apiKey}` placeholders.
+**Free (recommended to start): WhoisFreaks' free daily list.** WhoisFreaks
+publishes ~10,000 dropped/expired domains every day at 03:00 UTC in a public
+GitHub repo — no key, no subscription. Set provider to **WhoisFreaks FREE
+daily list** and you're done. The fetcher tries the dated file, the archive
+copy, then falls back to the always-current "latest" file.
+
+**Full coverage: WhoisFreaks' paid API** (~400k domains/day). Get an API key
+from the billing dashboard, set provider to **WhoisFreaks paid API**, and
+paste the key. If your dashboard shows a different download link than the
+built-in default, paste it into the URL-override field with `{date}` and
+`{apiKey}` placeholders.
 
 **Alternative: any custom URL.** Set provider to **URL feed** and paste a URL
 that returns one domain per line (`.txt`, `.csv`, or a `.zip`/`.gz` of one).

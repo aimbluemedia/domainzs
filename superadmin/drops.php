@@ -25,7 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         flash($stats['added'] > 0 ? 'success' : 'info',
             "Fetched {$date}: {$stats['raw']} in feed → {$stats['matched']} matched filter → "
-            . "{$stats['added']} new · {$stats['verified']} availability-verified · {$stats['ai_rated']} AI-rated.");
+            . "{$stats['added']} new · {$stats['verified']} availability-verified · "
+            . "{$stats['moz_rated']} Moz-rated · {$stats['ai_rated']} AI-rated.");
     } elseif ($action === 'delete') {
         $pdo->prepare('DELETE FROM drops WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
         flash('success', 'Drop deleted.');
@@ -134,7 +135,7 @@ layout_header('Drops', 'admin');
     <div class="empty">No drops match. Run a fetch above to pull the latest list.</div>
 <?php else: ?>
     <table>
-        <tr><th>Domain</th><th>Dropped</th><th>Score</th><th>Why</th><th>AI</th><th>Est.</th><th>Avail.</th><th></th></tr>
+        <tr><th>Domain</th><th>Dropped</th><th>Score</th><th>Why</th><th>DA</th><th>Links</th><th>AI</th><th>Est.</th><th>Avail.</th><th></th></tr>
         <?php foreach ($drops as $d):
             $notes = json_decode((string)$d['score_notes'], true) ?: []; ?>
         <tr>
@@ -142,6 +143,8 @@ layout_header('Drops', 'admin');
             <td><?= e($d['dropped_date']) ?></td>
             <td><span class="scorepill sc-<?= e(score_class((int)$d['score'])) ?>"><?= (int)$d['score'] ?></span></td>
             <td class="notes-cell"><?= e(implode(' · ', array_slice($notes, 0, 3))) ?></td>
+            <td><?= ($d['moz_da'] ?? null) !== null ? '<strong>' . (int)$d['moz_da'] . '</strong>' : '—' ?></td>
+            <td><?= ($d['moz_links'] ?? null) !== null ? number_format((float)$d['moz_links']) : '—' ?></td>
             <td><?= $d['ai_rating'] !== null ? (int)$d['ai_rating'] : '—' ?></td>
             <td><?= $d['est_value'] ? '~$' . number_format((float)$d['est_value']) : '—' ?></td>
             <td><?= $d['availability'] === 'available' ? '✅' : ($d['availability'] === 'registered' ? '❌' : '—') ?><?php
