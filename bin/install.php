@@ -50,8 +50,7 @@ $set = $pdo->prepare('INSERT IGNORE INTO settings (skey, sval) VALUES (?, ?)');
 foreach ([
     'hero_title'    => 'The best dropped 9-letter .coms — found and rated for you, daily.',
     'hero_subtitle' => 'domainzs pulls every freshly dropped domain, keeps the 9-character .coms, and scores each one for brandability and resale value — so you only look at names worth registering.',
-    'drops_provider'  => '',
-    'drops_url'       => '',
+    'cron_key'      => bin2hex(random_bytes(16)),
 ] as $k => $v) {
     if ($v !== '') {
         $set->execute([$k, $v]);
