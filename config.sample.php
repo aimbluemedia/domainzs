@@ -46,8 +46,8 @@ return [
         // default — paste it with {date} and {apiKey} placeholders.
         'whoisfreaks_url'     => getenv('WHOISFREAKS_URL') ?: '',
         // The filter: keep SLDs whose length is in this range (inclusive).
-        // Set both to the same number for an exact length (e.g. 9 and 9).
-        'min_len'   => (int)(getenv('DROPS_MIN_LEN') ?: 9),
+        // Default 2–9 ("9 and shorter"). Set both the same for an exact length.
+        'min_len'   => (int)(getenv('DROPS_MIN_LEN') ?: 2),
         'max_len'   => (int)(getenv('DROPS_MAX_LEN') ?: 9),
         // …on these TLDs (comma-separated, no dots).
         'tlds'      => getenv('DROPS_TLDS') ?: 'com',

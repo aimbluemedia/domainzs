@@ -149,7 +149,11 @@ function drops_config(array $config): array
         // Length is a range now. Fall back to the legacy single "exact_len"
         // so existing installs keep their exact-length behaviour until widened.
         'exact_len' => (int)(setting('drops_exact_len', (string)($file['exact_len'] ?? 9)) ?? 9),
-        'min_len'   => (int)(setting('drops_min_len', (string)($file['min_len'] ?? setting('drops_exact_len', (string)($file['exact_len'] ?? 9)))) ?? 9),
+        // Default range is 2–9 ("9 and shorter"). min is a fixed low default
+        // (not seeded from the legacy exact_len), so an install that only ever
+        // set exact_len still starts collecting shorter names after upgrade.
+        // max keeps seeding from exact_len so the old 9 ceiling is preserved.
+        'min_len'   => (int)(setting('drops_min_len', (string)($file['min_len'] ?? 2)) ?? 2),
         'max_len'   => (int)(setting('drops_max_len', (string)($file['max_len'] ?? setting('drops_exact_len', (string)($file['exact_len'] ?? 9)))) ?? 9),
         'tlds'      => setting('drops_tlds', (string)($file['tlds'] ?? 'com')),
         'max_keep'  => (int)(setting('drops_max_keep', (string)($file['max_keep'] ?? 500)) ?? 500),
