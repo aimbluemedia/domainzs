@@ -225,6 +225,9 @@ form.stack input, form.stack select, form.stack textarea {
     font-weight: 800; font-size: .95rem; color: #04121f;
     background: linear-gradient(90deg, #4da3ff, #6ee7b7); box-shadow: 0 2px 14px rgba(77,163,255,.25); }
 .btn-search:hover { filter: brightness(1.06); }
+.btn-reset { border-radius: 10px; padding: 13px 24px; background: var(--panel-2);
+    border: 1px solid var(--border); color: var(--text); font-weight: 700; }
+.btn-reset:hover { border-color: var(--accent); text-decoration: none; }
 
 /* Pricing */
 .pricing { margin: 48px 0; text-align: center; }

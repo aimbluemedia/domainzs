@@ -21,36 +21,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->prepare('DELETE FROM favorites WHERE user_id = ? AND drop_id = ?')
             ->execute([Auth::userId(), $dropId]);
     }
-    redirect('/member/drops.php?' . http_build_query(array_intersect_key($_GET, array_flip(['q', 'min', 'date']))));
+    redirect('/member/drops.php?' . http_build_query(array_intersect_key($_GET, array_flip(['q', 'min', 'len', 'avail', 'sort', 'date']))));
 }
 
 $latestDate = (string)($pdo->query('SELECT MAX(dropped_date) FROM drops')->fetchColumn() ?: '');
 $dates = $pdo->query('SELECT DISTINCT dropped_date FROM drops ORDER BY dropped_date DESC LIMIT 14')
     ->fetchAll(PDO::FETCH_COLUMN);
+$lengths = $pdo->query('SELECT DISTINCT len FROM drops ORDER BY len')->fetchAll(PDO::FETCH_COLUMN);
 
-$q    = trim((string)($_GET['q'] ?? ''));
-$min  = (int)($_GET['min'] ?? 0);
-$date = (string)($_GET['date'] ?? $latestDate);
+$q     = trim((string)($_GET['q'] ?? ''));
+$min   = (int)($_GET['min'] ?? 0);
+$len   = (int)($_GET['len'] ?? 0);
+$avail = (string)($_GET['avail'] ?? '');
+$sort  = (string)($_GET['sort'] ?? 'score');
+// "All dates" is an explicit empty value; otherwise default to the latest batch.
+$date  = isset($_GET['date']) ? (string)$_GET['date'] : $latestDate;
+
+$orderBy = match ($sort) {
+    'newest' => 'dropped_date DESC, score DESC',
+    'az'     => 'sld ASC',
+    'da'     => 'moz_da DESC, score DESC',
+    default  => 'score DESC, dropped_date DESC',
+};
 
 $drops = [];
 $total = 0;
-if ($date !== '') {
-    $where  = 'dropped_date = ?';
-    $params = [$date];
+if ($dates) {
+    $where  = '1=1';
+    $params = [];
+    if ($date !== '') {
+        $where   .= ' AND dropped_date = ?';
+        $params[] = $date;
+    }
     if ($q !== '') {
-        $where   .= ' AND domain LIKE ?';
+        $where   .= ' AND sld LIKE ?';
         $params[] = '%' . $q . '%';
+    }
+    if ($len > 0) {
+        $where   .= ' AND len = ?';
+        $params[] = $len;
     }
     if ($min > 0) {
         $where   .= ' AND score >= ?';
         $params[] = $min;
+    }
+    if (in_array($avail, ['available', 'registered', 'unknown'], true)) {
+        $where   .= ' AND availability = ?';
+        $params[] = $avail;
     }
     $count = $pdo->prepare("SELECT COUNT(*) FROM drops WHERE {$where}");
     $count->execute($params);
     $total = (int)$count->fetchColumn();
 
     $limit = $isPro ? 200 : 3;
-    $stmt  = $pdo->prepare("SELECT * FROM drops WHERE {$where} ORDER BY score DESC LIMIT {$limit}");
+    $stmt  = $pdo->prepare("SELECT * FROM drops WHERE {$where} ORDER BY {$orderBy} LIMIT {$limit}");
     $stmt->execute($params);
     $drops = $stmt->fetchAll();
 }
@@ -67,19 +91,37 @@ layout_header('Drop Board', 'member');
 <h1>Drop Board</h1>
 <p class="sub">Every dropped name that matched the filter, rated and sorted. Favorite the ones you like before someone else registers them.</p>
 
-<form class="filterrow" method="get">
-    <select name="date">
+<form class="searchbar" method="get" action="/member/drops.php">
+    <input class="searchbar-input" type="search" name="q" value="<?= e($q) ?>" placeholder="Search names — contains…">
+    <select class="searchbar-select" name="len" title="Name length">
+        <option value="0">Any length</option>
+        <?php foreach ($lengths as $l): ?>
+        <option value="<?= (int)$l ?>" <?= $len === (int)$l ? 'selected' : '' ?>><?= (int)$l ?> characters</option>
+        <?php endforeach; ?>
+    </select>
+    <select class="searchbar-select" name="date" title="Drop date">
+        <option value="">All dates</option>
         <?php foreach ($dates as $d): ?>
         <option value="<?= e($d) ?>" <?= $d === $date ? 'selected' : '' ?>><?= e($d) ?><?= $d === $latestDate ? ' (latest)' : '' ?></option>
         <?php endforeach; ?>
     </select>
-    <input name="q" value="<?= e($q) ?>" placeholder="Contains…">
-    <select name="min">
-        <?php foreach ([0 => 'Any score', 50 => '50+', 65 => '65+', 75 => '75+ (hot)'] as $v => $label): ?>
+    <select class="searchbar-select" name="min" title="Minimum score">
+        <?php foreach ([0 => 'Any score', 50 => '50+', 65 => '65+', 75 => '75+ (hot)', 85 => '85+ (🔥)'] as $v => $label): ?>
         <option value="<?= $v ?>" <?= $min === $v ? 'selected' : '' ?>><?= e($label) ?></option>
         <?php endforeach; ?>
     </select>
-    <button class="btn" type="submit">Filter</button>
+    <select class="searchbar-select" name="avail" title="Availability">
+        <?php foreach (['' => 'Any status', 'available' => '✅ Available', 'registered' => '❌ Taken', 'unknown' => 'Unchecked'] as $v => $label): ?>
+        <option value="<?= e($v) ?>" <?= $avail === $v ? 'selected' : '' ?>><?= e($label) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <select class="searchbar-select" name="sort" title="Sort by">
+        <?php foreach (['score' => 'Best score', 'newest' => 'Newest', 'az' => 'A → Z', 'da' => 'Domain Authority'] as $v => $label): ?>
+        <option value="<?= e($v) ?>" <?= $sort === $v ? 'selected' : '' ?>><?= e($label) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <button class="btn-search" type="submit">Search</button>
+    <a class="btn btn-reset" href="/member/drops.php">Reset</a>
 </form>
 
 <?php if (!$drops): ?>
