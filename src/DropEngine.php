@@ -29,6 +29,10 @@ final class DropEngine
      */
     public function run(?string $date = null): array
     {
+        // Feeds + API passes can legitimately take a while; don't let the
+        // host's default execution limit kill the pipeline mid-write.
+        @set_time_limit(300);
+
         $drops = drops_config($this->config);
         // No explicit date (cron): fetch the most recent *published* list —
         // most feeds publish a completed day the next morning (day_offset 1).
@@ -121,6 +125,14 @@ final class DropEngine
         }
 
         $namecom = new NameComClient(namecom_config($this->config));
+
+        // In a web request (the admin "Fetch now" button), only the fast bulk
+        // name.com check is allowed. Per-domain RDAP lookups can take minutes
+        // and freeze the page on shared hosting — that path is cron-only.
+        if (!$namecom->isConfigured() && PHP_SAPI !== 'cli') {
+            return 0;
+        }
+
         if ($namecom->isConfigured()) {
             $results = $namecom->checkAvailability(array_column($rows, 'domain'));
             $update  = $this->pdo->prepare(
