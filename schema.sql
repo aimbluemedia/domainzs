@@ -121,6 +121,18 @@ CREATE TABLE IF NOT EXISTS offers (
         REFERENCES listings (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- One AI "Daily Recap" per drop date — a deep-dive on that day's best names.
+CREATE TABLE IF NOT EXISTS daily_recaps (
+    id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    recap_date DATE         NOT NULL,
+    body       MEDIUMTEXT   NOT NULL,          -- JSON payload rendered by the page
+    drop_count INT UNSIGNED NOT NULL DEFAULT 0,
+    is_ai      TINYINT(1)   NOT NULL DEFAULT 0, -- 1 = real AI, 0 = heuristic mock
+    created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_recap_date (recap_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Site settings (key/value) — editable in /superadmin/settings.php.
 CREATE TABLE IF NOT EXISTS settings (
     skey VARCHAR(60)  NOT NULL,
