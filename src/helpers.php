@@ -167,6 +167,17 @@ function namecom_config(array $config): array
     ];
 }
 
+/** Moz API config: admin Settings first, config.php fallback. */
+function moz_config(array $config): array
+{
+    $file = $config['moz'] ?? [];
+    return [
+        'access_id'  => setting('moz_access_id', (string)($file['access_id'] ?? '')),
+        'secret_key' => setting('moz_secret_key', (string)($file['secret_key'] ?? '')),
+        'endpoint'   => setting('moz_endpoint', (string)($file['endpoint'] ?? '')),
+    ];
+}
+
 /** AI config: admin Settings first, config.php fallback. */
 function ai_config(array $config): array
 {

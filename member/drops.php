@@ -87,7 +87,7 @@ layout_header('Drop Board', 'member');
 <?php else: ?>
     <p class="sub"><?= $total ?> drop(s)<?= !$isPro && $total > count($drops) ? ' — free plan shows the top ' . count($drops) : '' ?></p>
     <table>
-        <tr><th></th><th>Domain</th><th>Score</th><th>Why</th><th>AI says</th><th>Est.</th><th>Availability</th></tr>
+        <tr><th></th><th>Domain</th><th>Score</th><th>Why</th><th>DA</th><th>Links</th><th>AI says</th><th>Est.</th><th>Availability</th></tr>
         <?php foreach ($drops as $d):
             $notes = json_decode((string)$d['score_notes'], true) ?: [];
             $isFav = isset($favIds[$d['id']]); ?>
@@ -103,6 +103,8 @@ layout_header('Drop Board', 'member');
             <td><strong><?= e($d['domain']) ?></strong></td>
             <td><span class="scorepill sc-<?= e(score_class((int)$d['score'])) ?>"><?= (int)$d['score'] ?></span></td>
             <td class="notes-cell"><?= e(implode(' · ', $notes)) ?></td>
+            <td><?= ($d['moz_da'] ?? null) !== null ? '<strong>' . (int)$d['moz_da'] . '</strong>' : '—' ?></td>
+            <td><?= ($d['moz_links'] ?? null) !== null ? number_format((float)$d['moz_links']) : '—' ?></td>
             <td class="notes-cell"><?= $d['ai_comment'] ? e($d['ai_comment']) : '—' ?></td>
             <td><?= $d['est_value'] ? '~$' . number_format((float)$d['est_value']) : '—' ?></td>
             <td><?= $d['availability'] === 'available' ? '<span class="badge-st st-free">Available</span>'

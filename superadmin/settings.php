@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'drops_provider', 'drops_url', 'drops_exact_len', 'drops_tlds', 'drops_max_keep', 'drops_day_offset',
         'whoisfreaks_api_key', 'whoisfreaks_url',
         'namecom_username', 'namecom_token',
+        'moz_access_id', 'moz_secret_key', 'moz_max_per_fetch',
         'ai_api_key', 'ai_model', 'ai_max_per_fetch',
         'mail_enabled', 'mail_to', 'mail_from',
     ];
@@ -50,8 +51,9 @@ layout_header('Settings', 'admin');
             <div>
                 <label>Provider</label>
                 <select name="drops_provider">
-                    <option value="mock" <?= !in_array($drops['provider'], ['url', 'whoisfreaks'], true) ? 'selected' : '' ?>>Mock (sample data)</option>
-                    <option value="whoisfreaks" <?= $drops['provider'] === 'whoisfreaks' ? 'selected' : '' ?>>WhoisFreaks API (recommended)</option>
+                    <option value="mock" <?= !in_array($drops['provider'], ['url', 'whoisfreaks', 'whoisfreaks_free'], true) ? 'selected' : '' ?>>Mock (sample data)</option>
+                    <option value="whoisfreaks_free" <?= $drops['provider'] === 'whoisfreaks_free' ? 'selected' : '' ?>>WhoisFreaks FREE daily list (no key)</option>
+                    <option value="whoisfreaks" <?= $drops['provider'] === 'whoisfreaks' ? 'selected' : '' ?>>WhoisFreaks paid API</option>
                     <option value="url" <?= $drops['provider'] === 'url' ? 'selected' : '' ?>>URL feed (custom)</option>
                 </select>
             </div>
@@ -76,7 +78,10 @@ layout_header('Settings', 'admin');
                 </select>
             </div>
         </div>
-        <label>WhoisFreaks API key (used when provider is "WhoisFreaks API")</label>
+        <p class="field-help"><strong>WhoisFreaks FREE daily list</strong> needs no key — it pulls the ~10,000
+        dropped/expired domains WhoisFreaks publishes each day (github.com/WhoisFreaks/daily-expired-and-dropped-domains).
+        The paid API below covers the full ~400k/day.</p>
+        <label>WhoisFreaks API key (used when provider is "WhoisFreaks paid API")</label>
         <input name="whoisfreaks_api_key" value="<?= e($drops['wf_api_key']) ?>" autocomplete="off"
                placeholder="from whoisfreaks.com → billing dashboard">
         <label>WhoisFreaks URL override (optional)</label>
@@ -112,6 +117,30 @@ layout_header('Settings', 'admin');
         (https://www.name.com/account/settings/api). When configured, each fetch bulk-checks the top drops through
         name.com — live availability plus the real registration price shown on the drop board. Without it, the app
         falls back to free RDAP checks (no prices).</p>
+    </div>
+
+    <div class="panel">
+        <h2 style="margin-top:0">📈 Moz — Domain Authority &amp; links
+            <?= (new \Domainzs\MozClient(moz_config($config)))->isConfigured()
+                ? '<span class="badge-st st-free">configured</span>' : '<span class="badge-st st-taken">not set</span>' ?></h2>
+        <div class="row">
+            <div>
+                <label>Moz Access ID</label>
+                <input name="moz_access_id" value="<?= e(moz_config($config)['access_id']) ?>" autocomplete="off">
+            </div>
+            <div class="rf-grow">
+                <label>Moz Secret Key</label>
+                <input name="moz_secret_key" type="password" value="<?= e(moz_config($config)['secret_key']) ?>" autocomplete="new-password">
+            </div>
+            <div>
+                <label>Max Moz-checked per fetch</label>
+                <input name="moz_max_per_fetch" type="number" min="0" max="200" value="<?= (int)(setting('moz_max_per_fetch', '25') ?? 25) ?>">
+            </div>
+        </div>
+        <p class="field-help">Free credentials at moz.com/products/api. When set, the top drops of each fetch get
+        <strong>Domain Authority</strong>, Page Authority, and <strong>linking root domains</strong> — an expired name
+        with real backlinks is worth far more than its spelling. The per-fetch cap keeps you inside Moz's free
+        monthly quota.</p>
     </div>
 
     <div class="panel">

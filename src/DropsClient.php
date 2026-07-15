@@ -7,22 +7,27 @@ namespace Domainzs;
  * Fetches the raw dropped-domain list for a date.
  *
  * Providers:
- *   'mock'        — deterministic generated sample drops, zero network calls.
- *   'whoisfreaks' — WhoisFreaks Expired & Dropped Domains API (recommended).
- *                   Needs the API key from whoisfreaks.com → billing dashboard.
- *                   Downloads the daily dropped-domains file (CSV, names only).
- *   'url'         — any URL returning one domain per line (.txt/.csv, or a
- *                   .zip/.gz of one). Date placeholders in the URL are
- *                   replaced with the day being fetched:
- *                     {date}      → 2026-07-14
- *                     {date_ymd}  → 20260714
- *                     {date_b64}  → MjAyNi0wNy0xNC56aXA=  (base64 of
- *                                    "2026-07-14.zip", as WhoisDS links use)
+ *   'mock'             — deterministic generated sample drops, no network calls.
+ *   'whoisfreaks_free' — WhoisFreaks' FREE daily list (~10,000 dropped/expired
+ *                        domains) published on GitHub. No API key needed.
+ *   'whoisfreaks'      — WhoisFreaks paid Expired & Dropped Domains API
+ *                        (full ~400k/day coverage). Needs the API key from
+ *                        whoisfreaks.com → billing dashboard.
+ *   'url'              — any URL returning one domain per line (.txt/.csv, or
+ *                        a .zip/.gz of one). Date placeholders in the URL are
+ *                        replaced with the day being fetched:
+ *                          {date}      → 2026-07-14
+ *                          {date_ymd}  → 20260714
+ *                          {date_b64}  → MjAyNi0wNy0xNC56aXA=  (base64 of
+ *                                         "2026-07-14.zip", as WhoisDS links use)
  */
 final class DropsClient
 {
     private const WHOISFREAKS_URL =
         'https://api.whoisfreaks.com/v1.0/whois/droppeddomains?whois=false&date={date}&apiKey={apiKey}';
+
+    private const WHOISFREAKS_FREE_BASE =
+        'https://raw.githubusercontent.com/WhoisFreaks/daily-expired-and-dropped-domains/main/';
 
     private ?string $lastError = null;
 
@@ -39,9 +44,10 @@ final class DropsClient
     public function isMock(): bool
     {
         return match ($this->cfg['provider'] ?? 'mock') {
-            'url'         => ($this->cfg['url'] ?? '') === '',
-            'whoisfreaks' => trim((string)($this->cfg['wf_api_key'] ?? '')) === '',
-            default       => true,
+            'url'              => ($this->cfg['url'] ?? '') === '',
+            'whoisfreaks'      => trim((string)($this->cfg['wf_api_key'] ?? '')) === '',
+            'whoisfreaks_free' => false, // no key needed
+            default            => true,
         };
     }
 
@@ -54,6 +60,10 @@ final class DropsClient
 
         if ($this->isMock()) {
             return $this->mockList($date);
+        }
+
+        if (($this->cfg['provider'] ?? '') === 'whoisfreaks_free') {
+            return $this->fetchWhoisFreaksFree($date);
         }
 
         if (($this->cfg['provider'] ?? '') === 'whoisfreaks') {
@@ -100,6 +110,33 @@ final class DropsClient
                 . (stripos($body, '<html') !== false ? ' (it returned an HTML page — a login wall or error page, not a list)' : '');
         }
         return $domains;
+    }
+
+    /**
+     * WhoisFreaks' free daily GitHub list. Tries the dated file, then the
+     * archive copy, then falls back to the always-current "latest" file.
+     *
+     * @return string[]
+     */
+    private function fetchWhoisFreaksFree(string $date): array
+    {
+        $candidates = [
+            "{$date}-free-dropped-domains.csv",
+            "archive/{$date}-free-dropped-domains.csv",
+            '0-latest-free-dropped-domains.csv',
+        ];
+        foreach ($candidates as $file) {
+            $this->lastError = null;
+            $body = $this->download(self::WHOISFREAKS_FREE_BASE . $file);
+            if ($body !== null) {
+                $domains = $this->parseList($body);
+                if ($domains) {
+                    return $domains;
+                }
+            }
+        }
+        $this->lastError = $this->lastError ?: 'the free WhoisFreaks list could not be fetched';
+        return [];
     }
 
     /**
