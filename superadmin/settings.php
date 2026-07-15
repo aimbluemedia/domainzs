@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
     $fields = [
         'hero_title', 'hero_subtitle', 'upgrade_note',
-        'drops_provider', 'drops_url', 'drops_exact_len', 'drops_tlds', 'drops_max_keep', 'drops_day_offset',
+        'drops_provider', 'drops_url', 'drops_min_len', 'drops_max_len', 'drops_tlds', 'drops_max_keep', 'drops_day_offset',
         'whoisfreaks_api_key', 'whoisfreaks_url',
         'namecom_username', 'namecom_token',
         'moz_access_id', 'moz_secret_key', 'moz_max_per_fetch',
@@ -60,8 +60,12 @@ layout_header('Settings', 'admin');
                 </select>
             </div>
             <div>
-                <label>Exact name length</label>
-                <input name="drops_exact_len" type="number" min="1" max="63" value="<?= (int)$drops['exact_len'] ?>">
+                <label>Min length</label>
+                <input name="drops_min_len" type="number" min="1" max="63" value="<?= (int)$drops['min_len'] ?>">
+            </div>
+            <div>
+                <label>Max length</label>
+                <input name="drops_max_len" type="number" min="1" max="63" value="<?= (int)$drops['max_len'] ?>">
             </div>
             <div>
                 <label>TLDs (comma-separated)</label>

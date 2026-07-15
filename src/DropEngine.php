@@ -45,13 +45,15 @@ final class DropEngine
 
         // 2. Filter.
         $tlds      = array_filter(array_map('trim', explode(',', strtolower($drops['tlds']))));
-        $exactLen  = max(1, (int)$drops['exact_len']);
+        $minLen    = max(1, (int)$drops['min_len']);
+        $maxLen    = max($minLen, (int)$drops['max_len']);
         $noHyphens = !empty($drops['no_hyphens']);
         $noDigits  = !empty($drops['no_digits']);
         $matched   = [];
         foreach ($raw as $domain) {
             [$sld, $tld] = split_domain($domain);
-            if (!in_array($tld, $tlds, true) || strlen($sld) !== $exactLen) {
+            $slen = strlen($sld);
+            if (!in_array($tld, $tlds, true) || $slen < $minLen || $slen > $maxLen) {
                 continue;
             }
             if (!preg_match('/^[a-z0-9-]+$/', $sld)) {
