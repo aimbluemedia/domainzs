@@ -146,7 +146,11 @@ function drops_config(array $config): array
         'url'        => setting('drops_url', (string)($file['url'] ?? '')),
         'wf_api_key' => setting('whoisfreaks_api_key', (string)($file['whoisfreaks_api_key'] ?? '')),
         'wf_url'     => setting('whoisfreaks_url', (string)($file['whoisfreaks_url'] ?? '')),
+        // Length is a range now. Fall back to the legacy single "exact_len"
+        // so existing installs keep their exact-length behaviour until widened.
         'exact_len' => (int)(setting('drops_exact_len', (string)($file['exact_len'] ?? 9)) ?? 9),
+        'min_len'   => (int)(setting('drops_min_len', (string)($file['min_len'] ?? setting('drops_exact_len', (string)($file['exact_len'] ?? 9)))) ?? 9),
+        'max_len'   => (int)(setting('drops_max_len', (string)($file['max_len'] ?? setting('drops_exact_len', (string)($file['exact_len'] ?? 9)))) ?? 9),
         'tlds'      => setting('drops_tlds', (string)($file['tlds'] ?? 'com')),
         'max_keep'  => (int)(setting('drops_max_keep', (string)($file['max_keep'] ?? 500)) ?? 500),
         'no_hyphens' => (setting('drops_no_hyphens', !empty($file['no_hyphens']) ? '1' : '0') === '1'),

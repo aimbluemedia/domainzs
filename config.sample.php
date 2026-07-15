@@ -45,8 +45,10 @@ return [
         // Only needed if WhoisFreaks' download link differs from the built-in
         // default — paste it with {date} and {apiKey} placeholders.
         'whoisfreaks_url'     => getenv('WHOISFREAKS_URL') ?: '',
-        // The filter: keep only SLDs of exactly this length…
-        'exact_len' => (int)(getenv('DROPS_EXACT_LEN') ?: 9),
+        // The filter: keep SLDs whose length is in this range (inclusive).
+        // Set both to the same number for an exact length (e.g. 9 and 9).
+        'min_len'   => (int)(getenv('DROPS_MIN_LEN') ?: 9),
+        'max_len'   => (int)(getenv('DROPS_MAX_LEN') ?: 9),
         // …on these TLDs (comma-separated, no dots).
         'tlds'      => getenv('DROPS_TLDS') ?: 'com',
         // Safety cap per fetch (a full day's .com drop list is 100k+ lines).

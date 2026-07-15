@@ -74,7 +74,6 @@ $sort  = (string)($_GET['sort'] ?? 'score');
 
 $dates = $pdo->query('SELECT DISTINCT dropped_date FROM drops ORDER BY dropped_date DESC LIMIT 30')
     ->fetchAll(PDO::FETCH_COLUMN);
-$lengths = $pdo->query('SELECT DISTINCT len FROM drops ORDER BY len')->fetchAll(PDO::FETCH_COLUMN);
 
 $where  = '1=1';
 $params = [];
@@ -125,7 +124,9 @@ if (!empty($dropsCfg['no_hyphens'])) { $extraFilters[] = 'no hyphens'; }
 if (!empty($dropsCfg['no_digits']))  { $extraFilters[] = 'no digits'; }
 ?>
 <h1>Drops</h1>
-<p class="sub">Filter: exactly <strong><?= (int)$dropsCfg['exact_len'] ?></strong>-character SLDs on
+<p class="sub">Filter: <strong><?= (int)$dropsCfg['min_len'] === (int)$dropsCfg['max_len']
+    ? (int)$dropsCfg['min_len'] . '-character'
+    : (int)$dropsCfg['min_len'] . '–' . (int)$dropsCfg['max_len'] . ' character' ?></strong> SLDs on
 <strong>.<?= e(str_replace(',', ', .', $dropsCfg['tlds'])) ?></strong><?php
 if ($extraFilters): ?>, <strong><?= e(implode(', ', $extraFilters)) ?></strong><?php endif; ?> — change it in
 <a href="/superadmin/settings.php">Settings</a>. Cron runs <code>bin/fetch.php</code> daily; you can also fetch on demand.</p>
@@ -147,8 +148,8 @@ if ($extraFilters): ?>, <strong><?= e(implode(', ', $extraFilters)) ?></strong><
     <input class="searchbar-input" type="search" name="q" value="<?= e($q) ?>" placeholder="Search names — contains…">
     <select class="searchbar-select" name="len" title="Name length">
         <option value="0">Any length</option>
-        <?php foreach ($lengths as $l): ?>
-        <option value="<?= (int)$l ?>" <?= $len === (int)$l ? 'selected' : '' ?>><?= (int)$l ?> characters</option>
+        <?php foreach (range(3, 9) as $l): ?>
+        <option value="<?= $l ?>" <?= $len === $l ? 'selected' : '' ?>><?= $l ?> characters</option>
         <?php endforeach; ?>
     </select>
     <select class="searchbar-select" name="date" title="Drop date">

@@ -27,7 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $latestDate = (string)($pdo->query('SELECT MAX(dropped_date) FROM drops')->fetchColumn() ?: '');
 $dates = $pdo->query('SELECT DISTINCT dropped_date FROM drops ORDER BY dropped_date DESC LIMIT 14')
     ->fetchAll(PDO::FETCH_COLUMN);
-$lengths = $pdo->query('SELECT DISTINCT len FROM drops ORDER BY len')->fetchAll(PDO::FETCH_COLUMN);
 
 $q     = trim((string)($_GET['q'] ?? ''));
 $min   = (int)($_GET['min'] ?? 0);
@@ -95,8 +94,8 @@ layout_header('Drop Board', 'member');
     <input class="searchbar-input" type="search" name="q" value="<?= e($q) ?>" placeholder="Search names — contains…">
     <select class="searchbar-select" name="len" title="Name length">
         <option value="0">Any length</option>
-        <?php foreach ($lengths as $l): ?>
-        <option value="<?= (int)$l ?>" <?= $len === (int)$l ? 'selected' : '' ?>><?= (int)$l ?> characters</option>
+        <?php foreach (range(3, 9) as $l): ?>
+        <option value="<?= $l ?>" <?= $len === $l ? 'selected' : '' ?>><?= $l ?> characters</option>
         <?php endforeach; ?>
     </select>
     <select class="searchbar-select" name="date" title="Drop date">
