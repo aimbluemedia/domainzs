@@ -10,6 +10,11 @@ Auth::requireAdmin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
+    if (($_POST['action'] ?? '') === 'regen_cron_key') {
+        set_setting('cron_key', bin2hex(random_bytes(16)));
+        flash('success', 'New cron key generated — update your cron job URL.');
+        redirect('/superadmin/settings.php');
+    }
     $fields = [
         'hero_title', 'hero_subtitle', 'upgrade_note',
         'drops_provider', 'drops_url', 'drops_min_len', 'drops_max_len', 'drops_tlds', 'drops_max_keep', 'drops_day_offset',
@@ -33,6 +38,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('/superadmin/settings.php');
 }
 
+// Ensure a cron key exists so the URL is ready to copy on first visit.
+$cronKey = (string) setting('cron_key', '');
+if ($cronKey === '') {
+    $cronKey = bin2hex(random_bytes(16));
+    set_setting('cron_key', $cronKey);
+}
+$scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$cronUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'your-domain.com') . '/cron.php?key=' . $cronKey;
+
 $drops   = drops_config($config);
 $namecom = namecom_config($config);
 $ai      = ai_config($config);
@@ -43,6 +57,25 @@ layout_header('Settings', 'admin');
 ?>
 <h1>Settings</h1>
 <p class="sub">Saved to the database and immediately live — they override the defaults in config.php.</p>
+
+<div class="panel">
+    <h2 style="margin-top:0">⏰ Automation (cron)</h2>
+    <p class="field-help" style="margin-top:0">Run this once a day to fetch the drop list, rate it, and build the Daily Recap.
+    Two ways — pick one:</p>
+    <label><strong>Option A — URL cron</strong> (easiest): call this URL once a day</label>
+    <input class="copy-field" value="<?= e($cronUrl) ?>" readonly onclick="this.select()">
+    <p class="field-help">In hPanel → Advanced → Cron Jobs, choose a "wget/URL" job (or paste
+    <code>wget -q -O /dev/null "<?= e($cronUrl) ?>"</code> as a command). Keep this URL secret — the key protects it.</p>
+
+    <label style="margin-top:14px"><strong>Option B — command cron</strong> (also does free RDAP availability): </label>
+    <input class="copy-field" value="php ~/domains/<?= e($_SERVER['HTTP_HOST'] ?? 'your-domain.com') ?>/public_html/bin/fetch.php" readonly onclick="this.select()">
+
+    <form method="post" style="margin-top:14px">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="regen_cron_key">
+        <button class="btn btn-sm" type="submit" onclick="return confirm('Generate a new key? Your old cron URL stops working until you update it.')">🔑 Regenerate key</button>
+    </form>
+</div>
 
 <form method="post" class="stack">
     <?= csrf_field() ?>
