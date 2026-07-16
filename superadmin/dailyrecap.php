@@ -58,16 +58,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('/superadmin/dailyrecap.php?date=' . urlencode($d));
     }
-    // Generate/Regenerate — spawn a detached process so the admin page returns
-    // instantly (AI + availability lookups are slow and were breaking the page).
+    // Check availability only — fast (a few WhoisFreaks lookups, no AI), so it
+    // runs inline even where exec() is disabled.
+    if (($_POST['action'] ?? '') === 'refresh_avail') {
+        $d = (string)($_POST['date'] ?? $latest);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
+            @set_time_limit(120);
+            $n = $engine->refreshAvailability($d);
+            flash($n < 0 ? 'error' : 'success', $n < 0
+                ? 'No recap for that date yet — generate one first.'
+                : "Checked availability for {$n} winners.");
+        }
+        redirect('/superadmin/dailyrecap.php?date=' . urlencode($d));
+    }
+
+    // Generate/Regenerate. Prefer a detached process; if exec() is disabled,
+    // fall back to a finish-request background run, then to a bounded inline run.
     $date = (string)($_POST['date'] ?? $latest);
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         if (spawn_background('bin/recap.php', ['--force', $date])) {
             set_setting('recap_generating_' . $date, (string) time());
             flash('info', "Regenerating the {$date} recap in the background — refresh this page in ~20–30 seconds.");
-        } else {
-            flash('error', 'Background jobs are unavailable on this host (exec disabled). Recap generation runs on the daily cron instead.');
+            redirect('/superadmin/dailyrecap.php?date=' . urlencode($date));
         }
+        // exec disabled — do it inline. Return the page first if the host
+        // supports finish-request; otherwise the admin waits (bounded).
+        @set_time_limit(300);
+        $hasFinish = function_exists('litespeed_finish_request') || function_exists('fastcgi_finish_request');
+        if ($hasFinish) {
+            set_setting('recap_generating_' . $date, (string) time());
+            $pdoRef = $pdo; $configRef = $config; $dateRef = $date;
+            register_shutdown_function(function () use ($pdoRef, $configRef, $dateRef): void {
+                if (function_exists('litespeed_finish_request')) { @litespeed_finish_request(); }
+                elseif (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }
+                @ignore_user_abort(true);
+                @set_time_limit(300);
+                try { (new DailyRecap($pdoRef, $configRef))->generate($dateRef); } catch (\Throwable $e) {}
+                try { set_setting('recap_generating_' . $dateRef, '0'); } catch (\Throwable $e) {}
+            });
+            flash('info', "Regenerating the {$date} recap in the background — refresh this page in ~20–30 seconds.");
+        } else {
+            $engine->generate($date);
+            flash('success', "Recap for {$date} regenerated.");
+        }
+        redirect('/superadmin/dailyrecap.php?date=' . urlencode($date));
     }
     redirect('/superadmin/dailyrecap.php?date=' . urlencode($date));
 }
@@ -112,6 +146,12 @@ and a build-a-business angle. Runs automatically after each daily fetch; regener
         <button class="btn btn-scan" type="submit"><?= $recap ? '♻️ Regenerate' : '✨ Generate recap' ?></button>
     </form>
     <?php if ($recap): ?>
+    <form class="inline-form" method="post">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="refresh_avail">
+        <input type="hidden" name="date" value="<?= e($date) ?>">
+        <button class="btn btn-primary" type="submit" title="Re-check the winners' availability (fast, no AI)">✅ Check availability</button>
+    </form>
     <form class="inline-form" method="post">
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="test_email">
