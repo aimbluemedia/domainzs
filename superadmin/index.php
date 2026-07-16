@@ -32,6 +32,28 @@ layout_header('Admin dashboard', 'admin');
 <h1>Dashboard</h1>
 <p class="sub">Latest batch: <?= $latestDate !== '' ? e($latestDate) : 'nothing fetched yet — run your first fetch on the Drops page' ?>.</p>
 
+<?php
+$lastRun = setting('cron_last_run', '');
+if ($lastRun === '') {
+    echo '<div class="flash flash-info">⏰ The daily cron hasn\'t run yet. Set it up in '
+        . '<a href="/superadmin/settings.php">Settings → Automation</a>, or run a fetch on the Drops page.</div>';
+} else {
+    $ago  = time() - strtotime($lastRun);
+    $mins = max(1, (int) round($ago / 60));
+    $human = $mins < 60 ? "{$mins} min ago"
+        : ($mins < 1440 ? round($mins / 60) . ' hr ago' : round($mins / 1440) . ' day(s) ago');
+    $summary = setting('cron_last_summary', '');
+    if ($ago > 26 * 3600) {
+        echo '<div class="flash flash-error">⚠️ Cron last ran <strong>' . e($human) . '</strong> ('
+            . e($lastRun) . '). It should run daily — check your hPanel cron job.'
+            . ($summary ? ' Last: ' . e($summary) . '.' : '') . '</div>';
+    } else {
+        echo '<div class="flash flash-success">✅ Cron last ran <strong>' . e($human) . '</strong> ('
+            . e($lastRun) . ')' . ($summary ? ' — ' . e($summary) : '') . '.</div>';
+    }
+}
+?>
+
 <div class="stat-grid">
     <div class="stat"><span class="stat-num"><?= number_format($stats['drops']) ?></span><span class="stat-label">Drops rated</span></div>
     <div class="stat"><span class="stat-num"><?= $stats['members'] ?></span><span class="stat-label">Members</span></div>
