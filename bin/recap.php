@@ -28,6 +28,7 @@ $drops  = drops_config($config);
 $date   = $dateArg ?: date('Y-m-d', time() - max(0, (int)$drops['day_offset']) * 86400);
 
 $recap = (new DailyRecap($pdo, $config))->generate($date);
+set_setting('recap_generating_' . $date, '0'); // clears the "Generating…" banner
 $stamp = date('Y-m-d H:i:s');
 if ($recap === null) {
     echo "[{$stamp}] {$date}: no drops for that date — nothing to recap.\n";

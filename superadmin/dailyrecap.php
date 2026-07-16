@@ -58,21 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('/superadmin/dailyrecap.php?date=' . urlencode($d));
     }
-    // Generate/Regenerate — run in the background so the admin page returns
+    // Generate/Regenerate — spawn a detached process so the admin page returns
     // instantly (AI + availability lookups are slow and were breaking the page).
     $date = (string)($_POST['date'] ?? $latest);
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        $pdoRef = $pdo; $configRef = $config; $dateRef = $date;
-        register_shutdown_function(function () use ($pdoRef, $configRef, $dateRef): void {
-            if (function_exists('litespeed_finish_request')) { @litespeed_finish_request(); }
-            elseif (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }
-            @ignore_user_abort(true);
-            @set_time_limit(300);
-            try { (new DailyRecap($pdoRef, $configRef))->generate($dateRef); } catch (\Throwable $e) { /* silent */ }
-            try { set_setting('recap_generating_' . $dateRef, '0'); } catch (\Throwable $e) {}
-        });
-        set_setting('recap_generating_' . $date, (string) time());
-        flash('info', "Regenerating the {$date} recap in the background — refresh this page in ~20–30 seconds.");
+        if (spawn_background('bin/recap.php', ['--force', $date])) {
+            set_setting('recap_generating_' . $date, (string) time());
+            flash('info', "Regenerating the {$date} recap in the background — refresh this page in ~20–30 seconds.");
+        } else {
+            flash('error', 'Background jobs are unavailable on this host (exec disabled). Recap generation runs on the daily cron instead.');
+        }
     }
     redirect('/superadmin/dailyrecap.php?date=' . urlencode($date));
 }
