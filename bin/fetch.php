@@ -52,6 +52,9 @@ if ($stats['added'] > 0 || $stats['matched'] > 0) {
         if ($recap !== null) {
             echo '  recap: ' . ($recap['is_ai'] ? 'AI' : 'heuristic')
                 . ' — top pick ' . ($recap['body']['top_pick']['domain'] ?? '(none)') . "\n";
+            if (email_recap_once($config, $date, $recap['body'])) {
+                echo "  recap email sent\n";
+            }
         }
     } catch (\Throwable $e) {
         echo "  recap skipped: {$e->getMessage()}\n";

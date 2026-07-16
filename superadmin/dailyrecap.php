@@ -23,6 +23,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('success', 'Saved your context — regenerate a recap to use it.');
         redirect('/superadmin/dailyrecap.php?date=' . urlencode((string)($_POST['date'] ?? $latest)));
     }
+    if (($_POST['action'] ?? '') === 'test_email') {
+        $d = (string)($_POST['date'] ?? $latest);
+        $r = preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? $engine->forDate($d) : null;
+        $mailer = new \Domainzs\Notifier($config);
+        if (!$mailer->enabled()) {
+            flash('error', 'Enable email and set a "To" address in Settings → Email first.');
+        } elseif ($r === null) {
+            flash('error', 'No recap for that date — generate one first.');
+        } elseif ($mailer->sendRecapDigest($d, $r['body'])) {
+            flash('success', 'Test recap email sent to ' . e(mail_config($config)['to']) . '.');
+        } else {
+            flash('error', 'mail() returned false — check your host\'s mail setup.');
+        }
+        redirect('/superadmin/dailyrecap.php?date=' . urlencode($d));
+    }
     $date = (string)($_POST['date'] ?? $latest);
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         @set_time_limit(300);
@@ -62,6 +77,14 @@ and a build-a-business angle. Runs automatically after each daily fetch; regener
         <input type="hidden" name="date" value="<?= e($date) ?>">
         <button class="btn btn-scan" type="submit"><?= $recap ? '♻️ Regenerate' : '✨ Generate recap' ?></button>
     </form>
+    <?php if ($recap): ?>
+    <form class="inline-form" method="post">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="test_email">
+        <input type="hidden" name="date" value="<?= e($date) ?>">
+        <button class="btn" type="submit">✉️ Send test email</button>
+    </form>
+    <?php endif; ?>
 </div>
 
 <?php if (!$dates): ?>

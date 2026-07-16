@@ -157,6 +157,12 @@ key it builds a heuristic recap from the scores so the page always works. Add
 your background under "Personalise the recap" on the Daily Recap page and the
 AI tailors the build-a-business pick to you.
 
+**Email it every morning:** enable email and tick *"Email the Daily Recap every
+morning"* in Settings → Email. The cron sends one HTML recap per day (top pick,
+top 10, sleeper, build-a-business, verdict) to your `mail.to` address — deduped
+so an hourly cron still sends a single morning email. Use *Send test email* on
+the Daily Recap page to preview it.
+
 Enable email in **Settings** to get a digest whenever new drops land, plus an
 instant email for every marketplace offer.
 
