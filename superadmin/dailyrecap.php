@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (($_POST['action'] ?? '') === 'test_email') {
         $d = (string)($_POST['date'] ?? $latest);
-        $r = preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? $engine->forDate($d) : null;
+        $r = preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? $engine->stored($d) : null;
         $mailer = new \Domainzs\Notifier($config);
         if (!$mailer->enabled()) {
             flash('error', 'Enable email and set a "To" address in Settings → Email first.');
@@ -58,22 +58,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('/superadmin/dailyrecap.php?date=' . urlencode($d));
     }
+    // Generate/Regenerate — run in the background so the admin page returns
+    // instantly (AI + availability lookups are slow and were breaking the page).
     $date = (string)($_POST['date'] ?? $latest);
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        @set_time_limit(300);
-        $r = $engine->generate($date);
-        $availCount = count(array_filter($r['body']['availability'] ?? [], fn ($v) => $v !== 'unknown'));
-        flash($r ? 'success' : 'error', $r
-            ? 'Recap generated (' . ($r['is_ai'] ? 'AI' : 'heuristic') . ") over {$r['drop_count']} names"
-                . ($availCount ? ", {$availCount} winners availability-checked." : '.')
-            : 'No drops for that date to recap.');
+        $pdoRef = $pdo; $configRef = $config; $dateRef = $date;
+        register_shutdown_function(function () use ($pdoRef, $configRef, $dateRef): void {
+            if (function_exists('litespeed_finish_request')) { @litespeed_finish_request(); }
+            elseif (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }
+            @ignore_user_abort(true);
+            @set_time_limit(300);
+            try { (new DailyRecap($pdoRef, $configRef))->generate($dateRef); } catch (\Throwable $e) { /* silent */ }
+            try { set_setting('recap_generating_' . $dateRef, '0'); } catch (\Throwable $e) {}
+        });
+        set_setting('recap_generating_' . $date, (string) time());
+        flash('info', "Regenerating the {$date} recap in the background — refresh this page in ~20–30 seconds.");
     }
     redirect('/superadmin/dailyrecap.php?date=' . urlencode($date));
 }
 
 $date  = (string)($_GET['date'] ?? $latest);
-$recap = $date !== '' ? $engine->forDate($date) : null;
+$recap = $date !== '' ? $engine->stored($date) : null; // view never generates (stays fast)
 $b     = $recap['body'] ?? [];
+$generating = $date !== '' && (int) setting('recap_generating_' . $date, '0') > time() - 120;
 
 $stars = fn (int $n): string => str_repeat('★', max(0, min(5, $n))) . str_repeat('☆', 5 - max(0, min(5, $n)));
 
@@ -125,7 +132,9 @@ and a build-a-business angle. Runs automatically after each daily fetch; regener
         <button class="btn" type="submit" title="Check WhoisFreaks availability for one domain and show the raw result">🔍 Test availability</button>
     </form>
 </div>
-<?php if ($recap && empty(array_filter($b['availability'] ?? [], fn ($v) => $v !== 'unknown'))): ?>
+<?php if ($generating): ?>
+<div class="flash flash-info">⏳ Generating the <?= e($date) ?> recap in the background… <a href="/superadmin/dailyrecap.php?date=<?= e($date) ?>">refresh</a> in ~20–30 seconds.</div>
+<?php elseif ($recap && empty(array_filter($b['availability'] ?? [], fn ($v) => $v !== 'unknown'))): ?>
 <div class="mock-note">Availability shows “unchecked” because this recap was built before the check ran (or the key wasn’t set).
 Click <strong>♻️ Regenerate</strong> to run it now. Use <strong>🔍 Test availability</strong> first to confirm the WhoisFreaks key works.</div>
 <?php endif; ?>
@@ -133,7 +142,9 @@ Click <strong>♻️ Regenerate</strong> to run it now. Use <strong>🔍 Test av
 <?php if (!$dates): ?>
     <div class="empty">No drops yet — fetch a batch on the <a href="/superadmin/drops.php">Drops</a> page first.</div>
 <?php elseif (!$recap): ?>
-    <div class="empty">No recap for <?= e($date) ?> yet — click <strong>Generate recap</strong> above.</div>
+    <div class="empty"><?= $generating
+        ? 'Generating the first recap for ' . e($date) . ' — refresh in a moment.'
+        : 'No recap for ' . e($date) . ' yet — click <strong>Generate recap</strong> above.' ?></div>
 <?php else: ?>
 
 <?php if (!$recap['is_ai']): ?>

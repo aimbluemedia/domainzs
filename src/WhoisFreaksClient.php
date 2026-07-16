@@ -22,6 +22,9 @@ final class WhoisFreaksClient
     /** Filled with the last raw request/response for the diagnostic tool. */
     public ?array $lastDebug = null;
 
+    /** Once one param style works, reuse it for the rest of the batch. */
+    private ?string $goodParam = null;
+
     public function __construct(private string $apiKey, private string $urlTemplate = '')
     {
     }
@@ -50,19 +53,22 @@ final class WhoisFreaksClient
     /** Check one domain, recording the last attempt for diagnostics. */
     public function checkOne(string $domain): string
     {
-        // A custom override template wins; otherwise try both param names.
         $custom = trim($this->urlTemplate);
-        $urls = $custom !== ''
-            ? [strtr($custom, ['{apiKey}' => rawurlencode($this->apiKey), '{domain}' => rawurlencode($domain)])]
-            : [
-                self::BASE . '?apiKey=' . rawurlencode($this->apiKey) . '&domainName=' . rawurlencode($domain),
-                self::BASE . '?apiKey=' . rawurlencode($this->apiKey) . '&domain=' . rawurlencode($domain),
-            ];
+        if ($custom !== '') {
+            $params = ['custom'];
+        } elseif ($this->goodParam !== null) {
+            $params = [$this->goodParam];            // reuse the style that worked
+        } else {
+            $params = ['domainName', 'domain'];      // first call tries both
+        }
 
-        foreach ($urls as $url) {
+        foreach ($params as $p) {
+            $url = $p === 'custom'
+                ? strtr($custom, ['{apiKey}' => rawurlencode($this->apiKey), '{domain}' => rawurlencode($domain)])
+                : self::BASE . '?apiKey=' . rawurlencode($this->apiKey) . '&' . $p . '=' . rawurlencode($domain);
+
             [$code, $body] = $this->get($url);
             $status = $this->parse($body);
-            // Record the last attempt (key masked) for the Test button.
             $this->lastDebug = [
                 'url'    => preg_replace('/apiKey=[^&]+/', 'apiKey=***', $url),
                 'http'   => $code,
@@ -70,6 +76,9 @@ final class WhoisFreaksClient
                 'status' => $status,
             ];
             if ($status !== 'unknown') {
+                if ($p !== 'custom') {
+                    $this->goodParam = $p;
+                }
                 return $status;
             }
         }
@@ -83,7 +92,8 @@ final class WhoisFreaksClient
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT        => 8,
             CURLOPT_HTTPHEADER     => ['Accept: application/json'],
             CURLOPT_USERAGENT      => 'domainzs/1.0',
         ]);
