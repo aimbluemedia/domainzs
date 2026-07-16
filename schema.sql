@@ -75,7 +75,10 @@ CREATE TABLE IF NOT EXISTS drops (
     est_value    INT UNSIGNED NULL,              -- estimated resale value, USD
     created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_drops_domain (domain),
+    -- Unique per (domain, date) so each day's fetch is its own batch — the
+    -- rolling free feed re-lists the same names, and we want the board to
+    -- advance daily rather than skip them all as global duplicates.
+    UNIQUE KEY uq_drops_domain_date (domain, dropped_date),
     KEY ix_drops_date_score (dropped_date, score),
     KEY ix_drops_score (score)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

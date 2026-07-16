@@ -49,7 +49,9 @@ final class DropEngine
         $maxLen    = max($minLen, (int)$drops['max_len']);
         $noHyphens = !empty($drops['no_hyphens']);
         $noDigits  = !empty($drops['no_digits']);
-        $matched   = [];
+        // Score EVERY matching name, then keep the highest-scored max_keep —
+        // so a capped batch is the best names, not just the first in feed order.
+        $scored = [];
         foreach ($raw as $domain) {
             [$sld, $tld] = split_domain($domain);
             $slen = strlen($sld);
@@ -65,29 +67,41 @@ final class DropEngine
             if ($noDigits && preg_match('/[0-9]/', $sld)) {
                 continue;
             }
-            $matched[$domain] = [$sld, $tld];
-            if (count($matched) >= (int)$drops['max_keep']) {
-                break;
+            if (isset($scored[$domain])) {
+                continue;
             }
+            $rated = Scorer::score($sld);
+            $scored[$domain] = ['sld' => $sld, 'tld' => $tld, 'len' => $slen,
+                'score' => $rated['score'], 'notes' => $rated['notes']];
         }
 
-        // 3. Score + insert (new domains only — the unique key dedupes).
+        $matchedCount = count($scored);
+        uasort($scored, fn ($a, $b) => $b['score'] <=> $a['score']);
+        $keep = array_slice($scored, 0, max(1, (int)$drops['max_keep']), true);
+
+        // 3. Insert this date's batch. Unique key is (domain, date), so re-running
+        //    the same day is idempotent but a new day gets its own batch.
         $insert = $this->pdo->prepare(
             'INSERT IGNORE INTO drops (domain, sld, tld, len, dropped_date, score, score_notes, availability)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $added = 0;
         $mockAvailability = $client->isMock() ? 'available' : 'unknown';
-        foreach ($matched as $domain => [$sld, $tld]) {
-            $rated = Scorer::score($sld);
+        foreach ($keep as $domain => $d) {
             $insert->execute([
-                $domain, $sld, $tld, strlen($sld), $date,
-                $rated['score'],
-                json_encode($rated['notes'], JSON_UNESCAPED_SLASHES),
+                $domain, $d['sld'], $d['tld'], $d['len'], $date,
+                $d['score'],
+                json_encode($d['notes'], JSON_UNESCAPED_SLASHES),
                 $mockAvailability,
             ]);
             $added += $insert->rowCount();
         }
+
+        // 3b. Retention: drop batches older than the keep window (default 45d)
+        //     so per-date storage doesn't grow without bound.
+        $keepDays = max(1, (int)(setting('drops_keep_days', '45') ?? 45));
+        $this->pdo->prepare('DELETE FROM drops WHERE dropped_date < (CURDATE() - INTERVAL ? DAY)')
+            ->execute([$keepDays]);
 
         // 4. RDAP-verify the day's top scorers (skip in mock — they're fake names).
         $verified = 0;
@@ -104,7 +118,7 @@ final class DropEngine
         return [
             'date'     => $date,
             'raw'      => count($raw),
-            'matched'  => count($matched),
+            'matched'  => $matchedCount,
             'added'    => $added,
             'verified'  => $verified,
             'moz_rated' => $mozRated,
