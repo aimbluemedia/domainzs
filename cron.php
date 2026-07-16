@@ -92,4 +92,8 @@ if ($stats['matched'] > 0) {
     }
 }
 
+// Record the run so the admin can confirm the cron is firing.
+set_setting('cron_last_run', date('Y-m-d H:i:s'));
+set_setting('cron_last_summary', "{$date}: {$stats['matched']} matched, {$stats['added']} new");
+
 echo "OK\n";
