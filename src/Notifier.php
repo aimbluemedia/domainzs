@@ -90,6 +90,19 @@ final class Notifier
         $esc = fn ($s) => htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $stars = fn (int $n) => str_repeat('★', max(0, min(5, $n))) . str_repeat('☆', 5 - max(0, min(5, $n)));
 
+        // Availability badge for a domain, using the map stored on the recap.
+        $avail = (array)($b['availability'] ?? []);
+        $badge = function (string $domain) use ($avail): string {
+            $s = $avail[strtolower($domain)] ?? '';
+            if ($s === 'available') {
+                return '<span style="display:inline-block;font-size:11px;font-weight:700;color:#0a7a33;background:#e4f7ea;border-radius:6px;padding:2px 7px;margin-left:8px">✅ AVAILABLE</span>';
+            }
+            if ($s === 'registered') {
+                return '<span style="display:inline-block;font-size:11px;font-weight:700;color:#a12222;background:#fdeaea;border-radius:6px;padding:2px 7px;margin-left:8px">❌ TAKEN</span>';
+            }
+            return '';
+        };
+
         $h  = '<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:640px;margin:0 auto;color:#1a1a1a">';
         $h .= '<h1 style="font-size:20px;margin:0 0 4px">📊 domainzs Daily Recap</h1>';
         $h .= '<p style="color:#666;margin:0 0 20px">' . $esc($date) . '</p>';
@@ -101,7 +114,7 @@ final class Notifier
             $p = $b['top_pick'];
             $h .= '<div style="border:2px solid #4da3ff;border-radius:12px;padding:16px 18px;margin:16px 0">';
             $h .= '<div style="font-size:13px;color:#888">🥇 TOP PICK</div>';
-            $h .= '<div style="font-size:24px;font-weight:800;margin:2px 0">' . $esc($p['domain']) . '</div>';
+            $h .= '<div style="font-size:24px;font-weight:800;margin:2px 0">' . $esc($p['domain']) . $badge((string)$p['domain']) . '</div>';
             $h .= '<div style="color:#e6a700;font-size:16px;letter-spacing:2px">' . $stars((int)($p['stars'] ?? 0)) . '</div>';
             if (!empty($p['why'])) {
                 $h .= '<ul style="padding-left:18px;margin:10px 0">';
@@ -122,6 +135,7 @@ final class Notifier
                     . '<td style="padding:8px 6px;color:#4da3ff;font-weight:800;width:24px">' . ($i + 1) . '</td>'
                     . '<td style="padding:8px 6px"><b style="font-size:15px">' . $esc($t['domain'] ?? '') . '</b>'
                     . '<span style="color:#e6a700;margin-left:8px">' . $stars((int)($t['stars'] ?? 0)) . '</span>'
+                    . $badge((string)($t['domain'] ?? ''))
                     . (!empty($t['note']) ? '<br><span style="color:#666;font-size:13px">' . $esc($t['note']) . '</span>' : '')
                     . '</td></tr>';
             }
@@ -130,14 +144,14 @@ final class Notifier
 
         if (!empty($b['sleeper']['domain'])) {
             $h .= '<h2 style="font-size:16px;margin:22px 0 6px">💤 The sleeper</h2>';
-            $h .= '<div style="font-size:18px;font-weight:800">' . $esc($b['sleeper']['domain']) . '</div>';
+            $h .= '<div style="font-size:18px;font-weight:800">' . $esc($b['sleeper']['domain']) . $badge((string)$b['sleeper']['domain']) . '</div>';
             $h .= '<p style="color:#555;margin:6px 0">' . $esc($b['sleeper']['why'] ?? '') . '</p>';
         }
 
         if (!empty($b['builder_pick']['domain'])) {
             $bp = $b['builder_pick'];
             $h .= '<h2 style="font-size:16px;margin:22px 0 6px">🚀 Best to build on</h2>';
-            $h .= '<div style="font-size:18px;font-weight:800">' . $esc($bp['domain']) . '</div>';
+            $h .= '<div style="font-size:18px;font-weight:800">' . $esc($bp['domain']) . $badge((string)$bp['domain']) . '</div>';
             if (!empty($bp['business_ideas'])) {
                 $h .= '<p style="color:#555;margin:6px 0">Ideas: ' . $esc(implode(' · ', (array)$bp['business_ideas'])) . '</p>';
             }
