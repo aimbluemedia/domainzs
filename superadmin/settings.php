@@ -22,7 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'namecom_username', 'namecom_token',
         'moz_access_id', 'moz_secret_key', 'moz_max_per_fetch',
         'ai_api_key', 'ai_model', 'ai_max_per_fetch',
-        'mail_enabled', 'mail_to', 'mail_from',
+        'mail_enabled', 'mail_to', 'mail_from', 'mail_from_name',
+        'mail_smtp_host', 'mail_smtp_port', 'mail_smtp_secure', 'mail_smtp_user', 'mail_smtp_pass',
     ];
     foreach ($fields as $field) {
         if (isset($_POST[$field])) {
@@ -215,11 +216,31 @@ layout_header('Settings', 'admin');
         <label class="checkbox"><input type="checkbox" name="mail_recap" value="1" <?= !empty($mail['recap']) ? 'checked' : '' ?>> Email the <strong>Daily Recap</strong> every morning (after the cron runs)</label>
         <div class="row">
             <div><label>To</label><input name="mail_to" type="email" value="<?= e($mail['to']) ?>"></div>
-            <div><label>From</label><input name="mail_from" value="<?= e($mail['from']) ?>"></div>
+            <div><label>From</label><input name="mail_from" value="<?= e($mail['from']) ?>" placeholder="daily@domainzs.com"></div>
+            <div><label>From name</label><input name="mail_from_name" value="<?= e($mail['from_name'] ?? 'domainzs') ?>"></div>
         </div>
-        <p class="field-help">Uses PHP <code>mail()</code>. The morning recap email is sent once per day by the cron
-        (send a test from the <a href="/superadmin/dailyrecap.php">Daily Recap</a> page). On shared hosting like
-        Hostinger, <code>mail()</code> works out of the box.</p>
+
+        <h3 style="margin:18px 0 4px;font-size:1rem">📮 SMTP (recommended on Hostinger)</h3>
+        <p class="field-help" style="margin-top:0">PHP <code>mail()</code> is often silently dropped on shared hosting.
+        Send through your real mailbox instead — for the <code>daily@domainzs.com</code> account use host
+        <code>smtp.hostinger.com</code>, port <code>465</code> (SSL), username = the full email, password = the mailbox password.</p>
+        <div class="row">
+            <div class="rf-grow"><label>SMTP host</label><input name="mail_smtp_host" value="<?= e($mail['smtp']['host'] ?? '') ?>" placeholder="smtp.hostinger.com"></div>
+            <div><label>Port</label><input name="mail_smtp_port" type="number" value="<?= (int)($mail['smtp']['port'] ?? 465) ?>"></div>
+            <div><label>Security</label>
+                <select name="mail_smtp_secure">
+                    <?php foreach (['ssl' => 'SSL (465)', 'tls' => 'STARTTLS (587)', 'none' => 'None'] as $v => $lbl): ?>
+                    <option value="<?= $v ?>" <?= ($mail['smtp']['secure'] ?? 'ssl') === $v ? 'selected' : '' ?>><?= e($lbl) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        <div class="row">
+            <div class="rf-grow"><label>SMTP username</label><input name="mail_smtp_user" value="<?= e($mail['smtp']['user'] ?? '') ?>" autocomplete="off" placeholder="daily@domainzs.com"></div>
+            <div class="rf-grow"><label>SMTP password</label><input name="mail_smtp_pass" type="password" value="<?= e($mail['smtp']['pass'] ?? '') ?>" autocomplete="new-password"></div>
+        </div>
+        <p class="field-help">The morning recap email is sent once per day by the cron. Preview it now with
+        <strong>Send test email</strong> on the <a href="/superadmin/dailyrecap.php">Daily Recap</a> page — it shows the exact SMTP result.</p>
     </div>
 
     <div class="panel">

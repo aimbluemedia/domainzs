@@ -103,8 +103,20 @@ return [
     // --- Email notifications (optional) ---
     // Offers on your listings + fetch digests. Uses PHP's mail().
     'mail' => [
-        'enabled' => (bool)(getenv('MAIL_ENABLED') ?: false),
-        'to'      => getenv('MAIL_TO') ?: '',
-        'from'    => getenv('MAIL_FROM') ?: 'domainzs@localhost',
+        'enabled'   => (bool)(getenv('MAIL_ENABLED') ?: false),
+        'to'        => getenv('MAIL_TO') ?: '',
+        'from'      => getenv('MAIL_FROM') ?: 'daily@domainzs.com',
+        'from_name' => getenv('MAIL_FROM_NAME') ?: 'domainzs',
+        // Authenticated SMTP (recommended on shared hosting — PHP mail() is
+        // often silently dropped). For a Hostinger mailbox: host
+        // smtp.hostinger.com, port 465, secure 'ssl', user = full email.
+        // Also settable in /superadmin/settings.php.
+        'smtp' => [
+            'host'   => getenv('MAIL_SMTP_HOST') ?: '',
+            'port'   => (int)(getenv('MAIL_SMTP_PORT') ?: 465),
+            'secure' => getenv('MAIL_SMTP_SECURE') ?: 'ssl',   // ssl | tls | none
+            'user'   => getenv('MAIL_SMTP_USER') ?: '',
+            'pass'   => getenv('MAIL_SMTP_PASS') ?: '',
+        ],
     ],
 ];
