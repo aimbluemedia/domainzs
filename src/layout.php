@@ -48,7 +48,7 @@ function layout_header(string $title, string $area = 'public'): void
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($title) ?> · domainzs</title>
-    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="stylesheet" href="/assets/style.css?v=<?= @filemtime(APP_ROOT . '/assets/style.css') ?: '1' ?>">
 </head>
 <body class="area-<?= e($area) ?><?= $sidebar ? ' has-sidebar' : '' ?>">
 <?php if ($sidebar): ?>
