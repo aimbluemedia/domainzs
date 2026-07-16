@@ -63,13 +63,13 @@ foreach ($candidates as $a) {
     }
 }
 
-$stats = (new DropEngine($pdo, $config))->run($dateArg);
+// One shared pipeline: fetch → rate → recap → email → stamp last-run.
+$stats = run_daily_pipeline($pdo, $config, $dateArg);
 $date  = $stats['date'];
 
 $top = $pdo->prepare('SELECT domain, score FROM drops WHERE dropped_date = ? ORDER BY score DESC LIMIT 5');
 $top->execute([$date]);
-$topDrops = $top->fetchAll();
-(new Notifier($config))->sendFetchDigest($date, $stats, $topDrops);
+(new Notifier($config))->sendFetchDigest($date, $stats, $top->fetchAll());
 
 $stamp = date('Y-m-d H:i:s');
 echo "[{$stamp}] {$date}: {$stats['raw']} in feed → {$stats['matched']} matched → {$stats['added']} new"
@@ -77,25 +77,8 @@ echo "[{$stamp}] {$date}: {$stats['raw']} in feed → {$stats['matched']} matche
 if (!empty($stats['error'])) {
     echo "FEED PROBLEM: {$stats['error']}\n";
 }
-
-// Daily Recap (best-effort — never fail the cron over it).
-if ($stats['matched'] > 0) {
-    try {
-        $recap = (new DailyRecap($pdo, $config))->forDate($date);
-        if ($recap !== null) {
-            echo 'recap: ' . ($recap['is_ai'] ? 'AI' : 'heuristic')
-                . ' — top pick ' . ($recap['body']['top_pick']['domain'] ?? '(none)') . "\n";
-            if (email_recap_once($config, $date, $recap['body'])) {
-                echo "recap email sent\n";
-            }
-        }
-    } catch (\Throwable $e) {
-        echo "recap skipped: {$e->getMessage()}\n";
-    }
+if (!empty($stats['recap_pick'])) {
+    echo "recap top pick: {$stats['recap_pick']}\n";
 }
-
-// Record the run so the admin can confirm the cron is firing.
-set_setting('cron_last_run', date('Y-m-d H:i:s'));
-set_setting('cron_last_summary', "{$date}: {$stats['matched']} matched, {$stats['added']} new");
 
 echo "OK\n";

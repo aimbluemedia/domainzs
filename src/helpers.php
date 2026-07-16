@@ -231,6 +231,37 @@ function mail_config(array $config): array
 }
 
 /**
+ * The full daily job in one call: fetch + filter + score + verify + AI-rate,
+ * generate the Daily Recap, email it once, and stamp cron_last_run. Shared by
+ * daily-run.php (cron/URL), the admin "Run now" button, and the self-healer.
+ *
+ * @return array the DropEngine stats (plus 'recap_pick' for messaging)
+ */
+function run_daily_pipeline(\PDO $pdo, array $config, ?string $date = null): array
+{
+    @set_time_limit(600);
+    $stats = (new \Domainzs\DropEngine($pdo, $config))->run($date);
+    $d = $stats['date'];
+
+    $stats['recap_pick'] = null;
+    if (($stats['matched'] ?? 0) > 0) {
+        try {
+            $recap = (new \Domainzs\DailyRecap($pdo, $config))->forDate($d);
+            if ($recap !== null) {
+                $stats['recap_pick'] = $recap['body']['top_pick']['domain'] ?? null;
+                email_recap_once($config, $d, $recap['body']);
+            }
+        } catch (\Throwable $e) {
+            // recap is best-effort; never fail the fetch over it
+        }
+    }
+
+    set_setting('cron_last_run', date('Y-m-d H:i:s'));
+    set_setting('cron_last_summary', "{$d}: {$stats['matched']} matched, {$stats['added']} new");
+    return $stats;
+}
+
+/**
  * Email the day's Daily Recap at most once per date. Safe to call on every
  * cron run — the recap_emailed_date setting dedupes, so an hourly cron still
  * sends a single morning email.
