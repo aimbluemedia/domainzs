@@ -91,6 +91,9 @@ final class DailyRecap
             $body = $this->mockRecap($drops);
         }
 
+        // Live availability for the winners (top pick + top 10) via WhoisFreaks.
+        $body['availability'] = $this->checkWinners($body);
+
         $this->pdo->prepare(
             'INSERT INTO daily_recaps (recap_date, body, drop_count, is_ai) VALUES (?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE body = VALUES(body), drop_count = VALUES(drop_count),
@@ -98,6 +101,58 @@ final class DailyRecap
         )->execute([$date, json_encode($body, JSON_UNESCAPED_SLASHES), count($drops), $isAi ? 1 : 0]);
 
         return ['body' => $body, 'is_ai' => $isAi, 'drop_count' => count($drops)];
+    }
+
+    /**
+     * Live availability check for the recap's winners (top pick + top 10)
+     * via the WhoisFreaks Domain Availability API. Falls back to the
+     * availability already stored on the drops row when WhoisFreaks isn't
+     * configured or a name isn't returned.
+     *
+     * @return array<string,string> domain => available|registered|unknown
+     */
+    private function checkWinners(array $body): array
+    {
+        $domains = [];
+        if (!empty($body['top_pick']['domain'])) {
+            $domains[] = (string) $body['top_pick']['domain'];
+        }
+        foreach ((array)($body['top10'] ?? []) as $t) {
+            if (!empty($t['domain'])) {
+                $domains[] = (string) $t['domain'];
+            }
+        }
+        foreach (['sleeper', 'builder_pick'] as $k) {
+            if (!empty($body[$k]['domain'])) {
+                $domains[] = (string) $body[$k]['domain'];
+            }
+        }
+        $domains = array_values(array_unique(array_map('strtolower', $domains)));
+        if (!$domains) {
+            return [];
+        }
+
+        $result = [];
+        $key = (string) setting('whoisfreaks_api_key', (string)($this->config['drops']['whoisfreaks_api_key'] ?? ''));
+        $wf  = new WhoisFreaksClient($key, (string) setting('whoisfreaks_avail_url', ''));
+        if ($wf->isConfigured()) {
+            $result = $wf->availability($domains);
+        }
+
+        // Fill any gaps from what the fetch already stored on the drops row.
+        $missing = array_values(array_diff($domains, array_keys(array_filter($result, fn ($v) => $v !== 'unknown'))));
+        if ($missing) {
+            $ph = implode(',', array_fill(0, count($missing), '?'));
+            $stmt = $this->pdo->prepare("SELECT domain, availability FROM drops WHERE domain IN ($ph) AND availability <> 'unknown'");
+            $stmt->execute($missing);
+            foreach ($stmt->fetchAll() as $row) {
+                $d = strtolower((string)$row['domain']);
+                if (($result[$d] ?? 'unknown') === 'unknown') {
+                    $result[$d] = (string) $row['availability'];
+                }
+            }
+        }
+        return $result;
     }
 
     /** Ask Claude for the structured recap. Returns null on any failure. */
