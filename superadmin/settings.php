@@ -47,9 +47,9 @@ if ($cronKey === '') {
     set_setting('cron_key', $cronKey);
 }
 $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$cronUrl  = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'your-domain.com') . '/cron.php?key=' . $cronKey;
-// Real server path to cron.php, so the command cron is copy-paste ready.
-$cronCmd  = '/usr/bin/php ' . APP_ROOT . '/cron.php ' . $cronKey . ' daily';
+$cronUrl  = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'your-domain.com') . '/daily-run.php?key=' . $cronKey;
+// Real server path to the endpoint, so the command cron is copy-paste ready.
+$cronCmd  = '/usr/bin/php ' . APP_ROOT . '/daily-run.php ' . $cronKey . ' daily';
 
 $drops   = drops_config($config);
 $namecom = namecom_config($config);
