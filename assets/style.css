@@ -266,17 +266,21 @@ form.stack input, form.stack select, form.stack textarea {
 .recap-resale .rr-label { display: block; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .recap-resale .rr-val { font-size: 1.25rem; font-weight: 800; }
 .recap-resale .rr-hi { color: var(--green); }
-.recap-top10 { margin: 0; padding: 0; list-style: none; counter-reset: none; }
-.recap-top10 li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.recap-top10 { margin: 0; padding: 0; list-style: none; }
+.recap-top10 li { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
 .recap-top10 li:last-child { border-bottom: none; }
-.rt-rank { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--panel-2); color: var(--accent);
-    font-weight: 800; font-size: .82rem; display: flex; align-items: center; justify-content: center; }
-.rt-domain { font-weight: 700; }
-.rt-stars { color: var(--amber); font-size: .82rem; letter-spacing: 1px; }
-.rt-note { color: var(--muted); font-size: .82rem; flex: 1 1 100%; padding-left: 34px; }
-.recap-sleeper { background: var(--panel-2); border-left: 3px solid var(--amber); border-radius: 0 8px 8px 0; padding: 10px 14px; margin-bottom: 8px; }
-.recap-sleeper p { margin: 6px 0 0; color: var(--muted); }
-.recap-verdict p { font-size: 1.02rem; margin: 0; }
+.rt-rank { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--panel-2); color: var(--accent);
+    font-weight: 800; font-size: .82rem; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+.rt-body { min-width: 0; flex: 1; }
+.rt-line { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.rt-domain { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+.rt-stars { color: var(--amber); font-size: .85rem; letter-spacing: 1px; }
+.rt-note { color: var(--muted); font-size: .88rem; margin-top: 3px; }
+.recap-domain-lg { font-size: 1.5rem; font-weight: 800; color: var(--text); letter-spacing: .01em; }
+.recap-under { margin: 8px 0 0; }
+.recap-under.recap-list { padding-left: 20px; }
+.recap-sublabel { display: block; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 6px; }
+.recap-verdict p { font-size: 1.02rem; margin: 0; line-height: 1.6; }
 .recap-context { margin-top: 22px; }
 .recap-context > summary { cursor: pointer; font-weight: 700; color: var(--muted); }
 
