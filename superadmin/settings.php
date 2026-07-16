@@ -44,6 +44,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     set_setting('namecom_test', empty($_POST['namecom_test']) ? '0' : '1');
     set_setting('drops_no_hyphens', empty($_POST['drops_no_hyphens']) ? '0' : '1');
     set_setting('drops_no_digits', empty($_POST['drops_no_digits']) ? '0' : '1');
+    if (($_POST['action'] ?? '') === '' && isset($_POST['mail_from'])) {
+        // Only touch auto_run when the main settings form is saved.
+        set_setting('auto_run', empty($_POST['auto_run']) ? '0' : '1');
+    }
     flash('success', 'Settings saved.');
     redirect('/superadmin/settings.php');
 }
@@ -96,11 +100,12 @@ layout_header('Settings', 'admin');
         </form>
     </div>
     <p class="field-help"><strong>▶️ Run now</strong> executes the whole pipeline immediately (fetch → rate → recap → email)
-    and turns the Dashboard indicator green — a reliable manual trigger that needs no cron or URL. And even with no cron
-    at all, ordinary site visits auto-run the day's fetch in the background, so the board stays fresh on its own.</p>
+    and turns the Dashboard indicator green — a reliable manual trigger that needs no cron or URL.</p>
+    <label class="checkbox" style="margin-top:10px"><input type="checkbox" name="auto_run" value="1" form="mainSettings" <?= setting('auto_run', '1') === '1' ? 'checked' : '' ?>>
+        Auto-run the daily fetch from ordinary site visits (background, never slows a page)</label>
 </div>
 
-<form method="post" class="stack">
+<form method="post" class="stack" id="mainSettings">
     <?= csrf_field() ?>
 
     <div class="panel">
