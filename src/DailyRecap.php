@@ -64,6 +64,25 @@ final class DailyRecap
     }
 
     /**
+     * Re-check just the winners' availability and update the stored recap —
+     * no AI regeneration, so it's fast enough to run inline (a handful of
+     * WhoisFreaks lookups). Returns how many winners now have a known status,
+     * or -1 if there's no stored recap for the date.
+     */
+    public function refreshAvailability(string $date): int
+    {
+        $stored = $this->stored($date);
+        if ($stored === null) {
+            return -1;
+        }
+        $body = $stored['body'];
+        $body['availability'] = $this->checkWinners($body);
+        $this->pdo->prepare('UPDATE daily_recaps SET body = ? WHERE recap_date = ?')
+            ->execute([json_encode($body, JSON_UNESCAPED_SLASHES), $date]);
+        return count(array_filter($body['availability'], fn ($v) => $v !== 'unknown'));
+    }
+
+    /**
      * Return the stored recap for a date, generating it if missing (or $force).
      * Generation is slow — call this from the background/cron, not a page view.
      * @return array{body:array,is_ai:bool,drop_count:int}|null null if no drops
