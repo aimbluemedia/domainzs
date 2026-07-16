@@ -65,10 +65,24 @@ final class Notifier
         if (!$this->enabled()) {
             return false;
         }
+        [$ok] = $this->sendRecapDigestVerbose($date, $body);
+        return $ok;
+    }
+
+    /**
+     * Same as sendRecapDigest but returns [ok, detail] for the test button /
+     * cron log — detail carries the SMTP transcript or mail() result.
+     * @return array{0:bool,1:string}
+     */
+    public function sendRecapDigestVerbose(string $date, array $body): array
+    {
+        if (!$this->enabled()) {
+            return [false, 'Email is disabled or no "To" address is set (Settings → Email).'];
+        }
         $base = rtrim((string)($this->config['app']['base_url'] ?? ''), '/');
         $pick = (string)($body['top_pick']['domain'] ?? '');
         $subject = "[domainzs] Daily Recap — {$date}" . ($pick !== '' ? " · top pick {$pick}" : '');
-        return $this->sendHtml($subject, $this->recapHtml($date, $body, $base));
+        return $this->deliverHtml($subject, $this->recapHtml($date, $body, $base));
     }
 
     private function recapHtml(string $date, array $b, string $base): string
@@ -142,18 +156,58 @@ final class Notifier
         return $h . '</div>';
     }
 
-    private function send(string $subject, string $body): bool
+    /** True when authenticated SMTP is configured (preferred over mail()). */
+    private function smtpOn(): bool
     {
-        $headers = 'From: ' . $this->mail['from'] . "\r\n"
-            . "Content-Type: text/plain; charset=utf-8\r\n";
-        return @mail($this->mail['to'], $subject, $body, $headers);
+        return (new Smtp($this->smtpConfig()))->isConfigured();
     }
 
-    private function sendHtml(string $subject, string $html): bool
+    private function smtpConfig(): array
     {
-        $headers = 'From: ' . $this->mail['from'] . "\r\n"
+        $s = $this->mail['smtp'] ?? [];
+        return [
+            'host'      => (string)($s['host'] ?? ''),
+            'port'      => (int)($s['port'] ?? 465),
+            'secure'    => (string)($s['secure'] ?? 'ssl'),
+            'user'      => (string)($s['user'] ?? ''),
+            'pass'      => (string)($s['pass'] ?? ''),
+            'from'      => (string)$this->mail['from'],
+            'from_name' => (string)($this->mail['from_name'] ?? 'domainzs'),
+            'ehlo'      => (string)($this->config['app']['base_url'] ?? 'localhost'),
+        ];
+    }
+
+    /** @return array{0:bool,1:string} deliver HTML via SMTP or mail(); with detail. */
+    private function deliverHtml(string $subject, string $html): array
+    {
+        if ($this->smtpOn()) {
+            return (new Smtp($this->smtpConfig()))->sendHtml((string)$this->mail['to'], $subject, $html);
+        }
+        $ok = $this->mailFn($subject, $html, true);
+        return [$ok, $ok ? 'Sent via PHP mail() (no SMTP configured).'
+            : 'PHP mail() returned false. On shared hosting, configure SMTP below for reliable delivery.'];
+    }
+
+    private function send(string $subject, string $body): bool
+    {
+        if ($this->smtpOn()) {
+            // Send plain text as a minimal HTML wrap through SMTP.
+            [$ok] = (new Smtp($this->smtpConfig()))->sendHtml(
+                (string)$this->mail['to'], $subject, nl2br(htmlspecialchars($body, ENT_QUOTES, 'UTF-8')));
+            return $ok;
+        }
+        return $this->mailFn($subject, $body, false);
+    }
+
+    /** PHP mail() with the -f envelope sender (fixes most shared-host drops). */
+    private function mailFn(string $subject, string $body, bool $html): bool
+    {
+        $from = (string)$this->mail['from'];
+        $headers = 'From: ' . $this->mail['from_name'] . ' <' . $from . ">\r\n"
+            . 'Reply-To: ' . $from . "\r\n"
             . "MIME-Version: 1.0\r\n"
-            . "Content-Type: text/html; charset=utf-8\r\n";
-        return @mail($this->mail['to'], $subject, $html, $headers);
+            . 'Content-Type: ' . ($html ? 'text/html' : 'text/plain') . "; charset=utf-8\r\n";
+        // The 5th param sets the envelope sender — without it Hostinger often drops mail.
+        return @mail((string)$this->mail['to'], $subject, $body, $headers, '-f' . $from);
     }
 }

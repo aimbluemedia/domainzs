@@ -215,8 +215,18 @@ function mail_config(array $config): array
         'enabled' => (setting('mail_enabled', !empty($file['enabled']) ? '1' : '0') === '1'),
         'to'      => setting('mail_to', (string)($file['to'] ?? '')),
         'from'    => setting('mail_from', (string)($file['from'] ?? 'domainzs@localhost')),
+        'from_name' => setting('mail_from_name', (string)($file['from_name'] ?? 'domainzs')),
         // The morning recap email (on by default once email itself is enabled).
         'recap'   => (setting('mail_recap', '1') === '1'),
+        // Authenticated SMTP (recommended on shared hosting). When host+user+pass
+        // are set, mail is sent through the mailbox instead of PHP mail().
+        'smtp' => [
+            'host'   => setting('mail_smtp_host', (string)($file['smtp']['host'] ?? '')),
+            'port'   => (int)(setting('mail_smtp_port', (string)($file['smtp']['port'] ?? 465)) ?? 465),
+            'secure' => setting('mail_smtp_secure', (string)($file['smtp']['secure'] ?? 'ssl')),
+            'user'   => setting('mail_smtp_user', (string)($file['smtp']['user'] ?? '')),
+            'pass'   => setting('mail_smtp_pass', (string)($file['smtp']['pass'] ?? '')),
+        ],
     ];
 }
 

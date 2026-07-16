@@ -31,10 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('error', 'Enable email and set a "To" address in Settings → Email first.');
         } elseif ($r === null) {
             flash('error', 'No recap for that date — generate one first.');
-        } elseif ($mailer->sendRecapDigest($d, $r['body'])) {
-            flash('success', 'Test recap email sent to ' . e(mail_config($config)['to']) . '.');
         } else {
-            flash('error', 'mail() returned false — check your host\'s mail setup.');
+            [$ok, $detail] = $mailer->sendRecapDigestVerbose($d, $r['body']);
+            if ($ok) {
+                flash('success', 'Test recap email sent to ' . mail_config($config)['to'] . '. Check your inbox (and spam).');
+            } else {
+                // Show the SMTP transcript / reason so delivery can be debugged.
+                flash('error', 'Send failed: ' . mb_substr($detail, 0, 600));
+            }
         }
         redirect('/superadmin/dailyrecap.php?date=' . urlencode($d));
     }
