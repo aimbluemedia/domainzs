@@ -45,20 +45,35 @@ final class DailyRecap
     }
 
     /**
+     * Return the stored recap for a date without generating — fast, safe to
+     * call on a page view (generation is slow: AI + availability lookups).
+     * @return array{body:array,is_ai:bool,drop_count:int}|null
+     */
+    public function stored(string $date): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT body, is_ai, drop_count FROM daily_recaps WHERE recap_date = ?');
+        $stmt->execute([$date]);
+        if ($row = $stmt->fetch()) {
+            return [
+                'body'       => json_decode((string)$row['body'], true) ?: [],
+                'is_ai'      => (bool)$row['is_ai'],
+                'drop_count' => (int)$row['drop_count'],
+            ];
+        }
+        return null;
+    }
+
+    /**
      * Return the stored recap for a date, generating it if missing (or $force).
+     * Generation is slow — call this from the background/cron, not a page view.
      * @return array{body:array,is_ai:bool,drop_count:int}|null null if no drops
      */
     public function forDate(string $date, bool $force = false): ?array
     {
         if (!$force) {
-            $stmt = $this->pdo->prepare('SELECT body, is_ai, drop_count FROM daily_recaps WHERE recap_date = ?');
-            $stmt->execute([$date]);
-            if ($row = $stmt->fetch()) {
-                return [
-                    'body'       => json_decode((string)$row['body'], true) ?: [],
-                    'is_ai'      => (bool)$row['is_ai'],
-                    'drop_count' => (int)$row['drop_count'],
-                ];
+            $existing = $this->stored($date);
+            if ($existing !== null) {
+                return $existing;
             }
         }
         return $this->generate($date);
