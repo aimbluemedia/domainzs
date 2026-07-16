@@ -215,5 +215,28 @@ function mail_config(array $config): array
         'enabled' => (setting('mail_enabled', !empty($file['enabled']) ? '1' : '0') === '1'),
         'to'      => setting('mail_to', (string)($file['to'] ?? '')),
         'from'    => setting('mail_from', (string)($file['from'] ?? 'domainzs@localhost')),
+        // The morning recap email (on by default once email itself is enabled).
+        'recap'   => (setting('mail_recap', '1') === '1'),
     ];
+}
+
+/**
+ * Email the day's Daily Recap at most once per date. Safe to call on every
+ * cron run — the recap_emailed_date setting dedupes, so an hourly cron still
+ * sends a single morning email.
+ */
+function email_recap_once(array $config, string $date, array $recapBody): bool
+{
+    $mail = mail_config($config);
+    if (empty($mail['enabled']) || empty($mail['recap'])) {
+        return false;
+    }
+    if (setting('recap_emailed_date', '') === $date) {
+        return false; // already sent today's
+    }
+    $sent = (new \Domainzs\Notifier($config))->sendRecapDigest($date, $recapBody);
+    if ($sent) {
+        set_setting('recap_emailed_date', $date);
+    }
+    return $sent;
 }

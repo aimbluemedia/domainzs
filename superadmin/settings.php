@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // Checkboxes: absent when unchecked.
     set_setting('mail_enabled', empty($_POST['mail_enabled']) ? '0' : '1');
+    set_setting('mail_recap', empty($_POST['mail_recap']) ? '0' : '1');
     set_setting('namecom_test', empty($_POST['namecom_test']) ? '0' : '1');
     set_setting('drops_no_hyphens', empty($_POST['drops_no_hyphens']) ? '0' : '1');
     set_setting('drops_no_digits', empty($_POST['drops_no_digits']) ? '0' : '1');
@@ -211,10 +212,14 @@ layout_header('Settings', 'admin');
     <div class="panel">
         <h2 style="margin-top:0">✉️ Email</h2>
         <label class="checkbox"><input type="checkbox" name="mail_enabled" value="1" <?= $mail['enabled'] ? 'checked' : '' ?>> Send email notifications (offers + fetch digests)</label>
+        <label class="checkbox"><input type="checkbox" name="mail_recap" value="1" <?= !empty($mail['recap']) ? 'checked' : '' ?>> Email the <strong>Daily Recap</strong> every morning (after the cron runs)</label>
         <div class="row">
             <div><label>To</label><input name="mail_to" type="email" value="<?= e($mail['to']) ?>"></div>
             <div><label>From</label><input name="mail_from" value="<?= e($mail['from']) ?>"></div>
         </div>
+        <p class="field-help">Uses PHP <code>mail()</code>. The morning recap email is sent once per day by the cron
+        (send a test from the <a href="/superadmin/dailyrecap.php">Daily Recap</a> page). On shared hosting like
+        Hostinger, <code>mail()</code> works out of the box.</p>
     </div>
 
     <div class="panel">
