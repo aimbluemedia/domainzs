@@ -266,16 +266,20 @@ form.stack input, form.stack select, form.stack textarea {
 .recap-resale .rr-label { display: block; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .recap-resale .rr-val { font-size: 1.25rem; font-weight: 800; }
 .recap-resale .rr-hi { color: var(--green); }
-.recap-top10 { margin: 0; padding: 0; list-style: none; }
-.recap-top10 li { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
-.recap-top10 li:last-child { border-bottom: none; }
-.rt-rank { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--panel-2); color: var(--accent);
-    font-weight: 800; font-size: .82rem; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+.recap-top10 { display: flex; flex-direction: column; gap: 8px; }
+.rt-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; }
+.rt-card.rt-avail { border-color: var(--green-dark); box-shadow: inset 3px 0 0 var(--green); }
+.rt-rank { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--bg); color: var(--accent);
+    font-weight: 800; font-size: .85rem; display: flex; align-items: center; justify-content: center; }
 .rt-body { min-width: 0; flex: 1; }
-.rt-line { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.rt-domain { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+.rt-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rt-domain { font-size: 1.12rem; font-weight: 800; color: var(--text); }
 .rt-stars { color: var(--amber); font-size: .85rem; letter-spacing: 1px; }
-.rt-note { color: var(--muted); font-size: .88rem; margin-top: 3px; }
+.rt-note { color: var(--muted); font-size: .86rem; margin-top: 4px; }
+.rt-reg { flex: none; background: var(--green); color: #fff; border: none; }
+.rt-reg:hover { background: var(--green-dark); text-decoration: none; }
+@media (max-width: 560px) { .rt-card { flex-wrap: wrap; } .rt-reg { margin-left: 40px; } }
 .recap-domain-lg { font-size: 1.5rem; font-weight: 800; color: var(--text); letter-spacing: .01em; }
 .recap-under { margin: 8px 0 0; }
 .recap-under.recap-list { padding-left: 20px; }

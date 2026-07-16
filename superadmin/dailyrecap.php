@@ -59,6 +59,16 @@ $b     = $recap['body'] ?? [];
 
 $stars = fn (int $n): string => str_repeat('★', max(0, min(5, $n))) . str_repeat('☆', 5 - max(0, min(5, $n)));
 
+$avail = $b['availability'] ?? [];
+$availBadge = function (string $domain) use ($avail): string {
+    $s = $avail[strtolower($domain)] ?? 'unknown';
+    return match ($s) {
+        'available'  => '<span class="badge-st st-free">✅ Available</span>',
+        'registered' => '<span class="badge-st st-taken">❌ Taken</span>',
+        default      => '<span class="badge-st st-unknown">— unchecked</span>',
+    };
+};
+
 layout_header('Daily Recap', 'admin');
 ?>
 <h1>📊 Daily Recap</h1>
@@ -110,7 +120,7 @@ and a build-a-business angle. Runs automatically after each daily fetch; regener
         <span class="recap-medal">🥇</span>
         <div>
             <div class="recap-hero-domain"><?= e($p['domain']) ?></div>
-            <div class="recap-stars"><?= e($stars((int)($p['stars'] ?? 0))) ?></div>
+            <div class="recap-stars"><?= e($stars((int)($p['stars'] ?? 0))) ?> &nbsp;<?= $availBadge((string)$p['domain']) ?></div>
         </div>
     </div>
     <?php if (!empty($p['why'])): ?>
@@ -131,27 +141,33 @@ and a build-a-business angle. Runs automatically after each daily fetch; regener
 <?php if (!empty($b['top10'])): ?>
 <div class="panel">
     <h2 style="margin-top:0">🏆 Top 10</h2>
-    <ol class="recap-top10">
-        <?php foreach ((array)$b['top10'] as $i => $t): ?>
-        <li>
+    <div class="recap-top10">
+        <?php foreach ((array)$b['top10'] as $i => $t): $dom = (string)($t['domain'] ?? '');
+            $isAvail = ($avail[strtolower($dom)] ?? '') === 'available'; ?>
+        <div class="rt-card<?= $isAvail ? ' rt-avail' : '' ?>">
             <span class="rt-rank"><?= $i + 1 ?></span>
             <div class="rt-body">
                 <div class="rt-line">
-                    <strong class="rt-domain"><?= e((string)($t['domain'] ?? '')) ?></strong>
+                    <strong class="rt-domain"><?= e($dom) ?></strong>
                     <span class="rt-stars"><?= e($stars((int)($t['stars'] ?? 0))) ?></span>
+                    <?= $availBadge($dom) ?>
                 </div>
                 <?php if (!empty($t['note'])): ?><div class="rt-note"><?= e((string)$t['note']) ?></div><?php endif; ?>
             </div>
-        </li>
+            <?php if ($isAvail): ?>
+            <a class="btn btn-sm rt-reg" target="_blank" rel="noopener"
+               href="https://www.name.com/domain/search/<?= rawurlencode($dom) ?>">Register →</a>
+            <?php endif; ?>
+        </div>
         <?php endforeach; ?>
-    </ol>
+    </div>
 </div>
 <?php endif; ?>
 
 <?php if (!empty($b['sleeper']['domain'])): ?>
 <div class="panel">
     <h2 style="margin-top:0">💤 The sleeper</h2>
-    <div class="recap-domain-lg"><?= e((string)$b['sleeper']['domain']) ?></div>
+    <div class="recap-domain-lg"><?= e((string)$b['sleeper']['domain']) ?> &nbsp;<?= $availBadge((string)$b['sleeper']['domain']) ?></div>
     <p class="recap-under"><?= e((string)($b['sleeper']['why'] ?? '')) ?></p>
 </div>
 <?php endif; ?>
@@ -159,7 +175,7 @@ and a build-a-business angle. Runs automatically after each daily fetch; regener
 <?php if (!empty($b['builder_pick']['domain'])): $bp = $b['builder_pick']; ?>
 <div class="panel">
     <h2 style="margin-top:0">🚀 Best to build on</h2>
-    <div class="recap-domain-lg"><?= e((string)$bp['domain']) ?></div>
+    <div class="recap-domain-lg"><?= e((string)$bp['domain']) ?> &nbsp;<?= $availBadge((string)$bp['domain']) ?></div>
     <?php if (!empty($bp['why'])): ?>
     <ul class="recap-list recap-under"><?php foreach ((array)$bp['why'] as $w): ?><li><?= e((string)$w) ?></li><?php endforeach; ?></ul>
     <?php endif; ?>
