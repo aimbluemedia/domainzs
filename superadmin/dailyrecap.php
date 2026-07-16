@@ -42,12 +42,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('/superadmin/dailyrecap.php?date=' . urlencode($d));
     }
+    if (($_POST['action'] ?? '') === 'test_avail') {
+        $d = (string)($_POST['date'] ?? $latest);
+        $key = (string) setting('whoisfreaks_api_key', (string)($config['drops']['whoisfreaks_api_key'] ?? ''));
+        if (trim($key) === '') {
+            flash('error', 'No WhoisFreaks API key set (Settings → Drop feed → WhoisFreaks API key).');
+        } else {
+            $sample = (string)($_POST['sample'] ?? 'google.com') ?: 'google.com';
+            $wf = new \Domainzs\WhoisFreaksClient($key, (string) setting('whoisfreaks_avail_url', ''));
+            $status = $wf->checkOne($sample);
+            $dbg = $wf->lastDebug ?? [];
+            flash($status === 'unknown' ? 'error' : 'success',
+                "WhoisFreaks test for {$sample} → {$status}. HTTP " . ($dbg['http'] ?? '?')
+                . ' · ' . mb_substr((string)($dbg['body'] ?? '(no body)'), 0, 300));
+        }
+        redirect('/superadmin/dailyrecap.php?date=' . urlencode($d));
+    }
     $date = (string)($_POST['date'] ?? $latest);
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         @set_time_limit(300);
         $r = $engine->generate($date);
+        $availCount = count(array_filter($r['body']['availability'] ?? [], fn ($v) => $v !== 'unknown'));
         flash($r ? 'success' : 'error', $r
-            ? 'Recap generated (' . ($r['is_ai'] ? 'AI' : 'heuristic') . ') over ' . $r['drop_count'] . ' names.'
+            ? 'Recap generated (' . ($r['is_ai'] ? 'AI' : 'heuristic') . ") over {$r['drop_count']} names"
+                . ($availCount ? ", {$availCount} winners availability-checked." : '.')
             : 'No drops for that date to recap.');
     }
     redirect('/superadmin/dailyrecap.php?date=' . urlencode($date));
@@ -99,7 +117,18 @@ and a build-a-business angle. Runs automatically after each daily fetch; regener
         <button class="btn" type="submit">✉️ Send test email</button>
     </form>
     <?php endif; ?>
+    <form class="inline-form" method="post">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="test_avail">
+        <input type="hidden" name="date" value="<?= e($date) ?>">
+        <input type="hidden" name="sample" value="google.com">
+        <button class="btn" type="submit" title="Check WhoisFreaks availability for one domain and show the raw result">🔍 Test availability</button>
+    </form>
 </div>
+<?php if ($recap && empty(array_filter($b['availability'] ?? [], fn ($v) => $v !== 'unknown'))): ?>
+<div class="mock-note">Availability shows “unchecked” because this recap was built before the check ran (or the key wasn’t set).
+Click <strong>♻️ Regenerate</strong> to run it now. Use <strong>🔍 Test availability</strong> first to confirm the WhoisFreaks key works.</div>
+<?php endif; ?>
 
 <?php if (!$dates): ?>
     <div class="empty">No drops yet — fetch a batch on the <a href="/superadmin/drops.php">Drops</a> page first.</div>

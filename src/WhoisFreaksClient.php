@@ -7,16 +7,20 @@ namespace Domainzs;
  * WhoisFreaks Domain Availability API — checks whether specific domains are
  * still registrable. Uses the same API key as the WhoisFreaks drop feed.
  *
- *   GET https://api.whoisfreaks.com/v1.0/domain/availability?apiKey=KEY&domain=X
- *       -> {"domain":"x.com","domainAvailability": true|false}
+ *   GET https://api.whoisfreaks.com/v1.0/domain/availability?apiKey=KEY&domainName=X
+ *       -> {"domain_name":"x.com","domain_available":true} (shapes vary; we
+ *          parse several). The param name has been documented as both
+ *          "domainName" and "domain", so we try both.
  *
  * Used to verify the Daily Recap's handful of winners (top pick + top 10),
  * so the check is a few credits per recap.
  */
 final class WhoisFreaksClient
 {
-    private const DEFAULT_URL =
-        'https://api.whoisfreaks.com/v1.0/domain/availability?apiKey={apiKey}&domain={domain}';
+    private const BASE = 'https://api.whoisfreaks.com/v1.0/domain/availability';
+
+    /** Filled with the last raw request/response for the diagnostic tool. */
+    public ?array $lastDebug = null;
 
     public function __construct(private string $apiKey, private string $urlTemplate = '')
     {
@@ -28,7 +32,6 @@ final class WhoisFreaksClient
     }
 
     /**
-     * Check availability of a small set of domains.
      * @param string[] $domains
      * @return array<string,string> domain => 'available' | 'registered' | 'unknown'
      */
@@ -38,19 +41,43 @@ final class WhoisFreaksClient
         if (!$this->isConfigured()) {
             return $out;
         }
-        $template = trim($this->urlTemplate) !== '' ? $this->urlTemplate : self::DEFAULT_URL;
-
         foreach (array_values(array_unique($domains)) as $domain) {
-            $url = strtr($template, [
-                '{apiKey}' => rawurlencode($this->apiKey),
-                '{domain}' => rawurlencode($domain),
-            ]);
-            $out[strtolower($domain)] = $this->parse($this->get($url));
+            $out[strtolower($domain)] = $this->checkOne($domain);
         }
         return $out;
     }
 
-    private function get(string $url): ?array
+    /** Check one domain, recording the last attempt for diagnostics. */
+    public function checkOne(string $domain): string
+    {
+        // A custom override template wins; otherwise try both param names.
+        $custom = trim($this->urlTemplate);
+        $urls = $custom !== ''
+            ? [strtr($custom, ['{apiKey}' => rawurlencode($this->apiKey), '{domain}' => rawurlencode($domain)])]
+            : [
+                self::BASE . '?apiKey=' . rawurlencode($this->apiKey) . '&domainName=' . rawurlencode($domain),
+                self::BASE . '?apiKey=' . rawurlencode($this->apiKey) . '&domain=' . rawurlencode($domain),
+            ];
+
+        foreach ($urls as $url) {
+            [$code, $body] = $this->get($url);
+            $status = $this->parse($body);
+            // Record the last attempt (key masked) for the Test button.
+            $this->lastDebug = [
+                'url'    => preg_replace('/apiKey=[^&]+/', 'apiKey=***', $url),
+                'http'   => $code,
+                'body'   => is_string($body) ? mb_substr($body, 0, 400) : null,
+                'status' => $status,
+            ];
+            if ($status !== 'unknown') {
+                return $status;
+            }
+        }
+        return 'unknown';
+    }
+
+    /** @return array{0:int,1:?string} */
+    private function get(string $url): array
     {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -63,24 +90,27 @@ final class WhoisFreaksClient
         $body = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         curl_close($ch);
-        if ($code !== 200 || !is_string($body)) {
-            return null;
-        }
-        $data = json_decode($body, true);
-        return is_array($data) ? $data : null;
+        return [$code, is_string($body) ? $body : null];
     }
 
-    /** Tolerate boolean or string availability shapes. */
-    private function parse(?array $data): string
+    /** Tolerate the many availability field/shape variants WhoisFreaks uses. */
+    private function parse(?string $body): string
     {
-        if ($data === null) {
+        if ($body === null) {
             return 'unknown';
         }
-        // Bulk endpoints may wrap results in an array.
+        $data = json_decode($body, true);
+        if (!is_array($data)) {
+            return 'unknown';
+        }
         if (isset($data[0]) && is_array($data[0])) {
             $data = $data[0];
         }
-        $raw = $data['domainAvailability'] ?? $data['domain_availability'] ?? $data['available'] ?? null;
+        $raw = $data['domain_available'] ?? $data['domainAvailability'] ?? $data['domain_availability']
+            ?? $data['available'] ?? $data['availability'] ?? null;
+        if ($raw === null) {
+            return 'unknown';
+        }
         if (is_bool($raw)) {
             return $raw ? 'available' : 'registered';
         }
