@@ -4,13 +4,15 @@ declare(strict_types=1);
 /**
  * Cron entry point — runs the full daily pipeline: fetch the drop list,
  * filter, score, verify (name.com / RDAP), Moz, AI-rate, then build the
- * Daily Recap. Works two ways, both protected by the secret key in Settings:
+ * Daily Recap. Named daily-run.php (not cron.php) because many hosts —
+ * Hostinger included — block direct web access to files named cron.php.
+ * Works two ways, both protected by the secret key in Settings:
  *
  *   Command cron (recommended — also does the free RDAP availability check):
- *     /usr/bin/php /home/USER/domains/your-domain.com/public_html/cron.php <KEY> daily
+ *     /usr/bin/php /home/USER/domains/your-domain.com/public_html/daily-run.php <KEY> daily
  *
  *   URL cron (no SSH needed):
- *     https://your-domain.com/cron.php?key=<KEY>
+ *     https://your-domain.com/daily-run.php?key=<KEY>
  *
  * The trailing "daily" (or any task word) is accepted and ignored — there is
  * one job. An optional YYYY-MM-DD argument overrides which day is fetched.

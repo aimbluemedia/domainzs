@@ -137,10 +137,12 @@ can explore and demo everything offline.
 ```
 
 **No SSH? Use the URL cron instead.** Settings → Automation shows a
-secret-key URL (`https://your-domain.com/cron.php?key=…`); point any URL cron
-(hPanel's wget job, UptimeRobot, cron-job.org) at it once a day. It runs the
-same pipeline (the free RDAP availability fallback is command-cron only, to
-keep the web request fast — name.com availability still works either way).
+secret-key URL (`https://your-domain.com/daily-run.php?key=…`); point any URL
+cron (hPanel's wget job, UptimeRobot, cron-job.org) at it once a day. It runs
+the same pipeline (the free RDAP availability fallback is command-cron only, to
+keep the web request fast — name.com availability still works either way). The
+endpoint is `daily-run.php` rather than `cron.php` because many hosts block
+direct web access to files named `cron.php`.
 
 `bin/fetch.php` (and the URL cron) also generate that day's **Daily Recap** automatically once
 the batch is in (an AI deep-dive on the best names — top pick, ranked top 10,
