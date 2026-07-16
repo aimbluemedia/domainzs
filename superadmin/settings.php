@@ -15,6 +15,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('success', 'New cron key generated — update your cron job URL.');
         redirect('/superadmin/settings.php');
     }
+    if (($_POST['action'] ?? '') === 'run_now') {
+        $stats = run_daily_pipeline($pdo, $config);
+        $msg = "Daily job ran for {$stats['date']}: {$stats['matched']} matched, {$stats['added']} new"
+            . ($stats['recap_pick'] ? ", recap top pick {$stats['recap_pick']}" : '')
+            . (!empty($stats['error']) ? " — feed note: {$stats['error']}" : '') . '.';
+        flash(!empty($stats['error']) && $stats['matched'] === 0 ? 'error' : 'success', $msg);
+        redirect('/superadmin/settings.php');
+    }
     $fields = [
         'hero_title', 'hero_subtitle', 'upgrade_note',
         'drops_provider', 'drops_url', 'drops_min_len', 'drops_max_len', 'drops_tlds', 'drops_max_keep', 'drops_day_offset',
@@ -75,11 +83,21 @@ layout_header('Settings', 'admin');
     <input class="copy-field" value="<?= e($cronCmd) ?>" readonly onclick="this.select()">
     <p class="field-help">Schedule it once a day (e.g. minute 30, hour 6). The trailing <code>daily</code> is just a label.</p>
 
-    <form method="post" style="margin-top:14px">
-        <?= csrf_field() ?>
-        <input type="hidden" name="action" value="regen_cron_key">
-        <button class="btn btn-sm" type="submit" onclick="return confirm('Generate a new key? Your old cron URL stops working until you update it.')">🔑 Regenerate key</button>
-    </form>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+        <form method="post">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="run_now">
+            <button class="btn btn-scan" type="submit">▶️ Run the daily job now</button>
+        </form>
+        <form method="post">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="regen_cron_key">
+            <button class="btn btn-sm" type="submit" onclick="return confirm('Generate a new key? Your old cron URL stops working until you update it.')">🔑 Regenerate key</button>
+        </form>
+    </div>
+    <p class="field-help"><strong>▶️ Run now</strong> executes the whole pipeline immediately (fetch → rate → recap → email)
+    and turns the Dashboard indicator green — a reliable manual trigger that needs no cron or URL. And even with no cron
+    at all, ordinary site visits auto-run the day's fetch in the background, so the board stays fresh on its own.</p>
 </div>
 
 <form method="post" class="stack">

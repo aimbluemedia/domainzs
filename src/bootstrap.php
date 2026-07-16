@@ -51,3 +51,43 @@ if (PHP_SAPI !== 'cli' && session_status() !== PHP_SESSION_ACTIVE) {
     session_name('domainzs');
     session_start();
 }
+
+// --- Self-healing scheduler (wp-cron style fallback) ---
+// When the host's cron or the daily-run URL is blocked, ordinary page traffic
+// keeps the daily fetch running: if the day's batch hasn't been pulled yet, a
+// detached background process runs daily-run.php. Throttled, silent, and a
+// no-op once the day is done or a real cron already ran. daily-run.php itself
+// is excluded to avoid recursion.
+if (PHP_SAPI !== 'cli' && basename((string)($_SERVER['SCRIPT_NAME'] ?? '')) !== 'daily-run.php') {
+    try {
+        $cronKey = (string) setting('cron_key', '');
+        if ($cronKey !== '' && function_exists('exec')) {
+            $dropsCfg = drops_config($config);
+            $wantDate = date('Y-m-d', time() - max(0, (int)$dropsCfg['day_offset']) * 86400);
+            // Already have that day's batch?
+            $done = true;
+            try {
+                $q = $pdo->prepare('SELECT 1 FROM drops WHERE dropped_date = ? LIMIT 1');
+                $q->execute([$wantDate]);
+                $done = (bool) $q->fetchColumn();
+            } catch (\Throwable $e) {
+                $done = true; // tables not migrated yet — do nothing
+            }
+            $lastKick = (int) (setting('cron_kick_at', '0') ?: 0);
+            // Kick at most once every 30 min, only while today's batch is missing.
+            if (!$done && time() - $lastKick > 30 * 60) {
+                set_setting('cron_kick_at', (string) time());
+                $phpBin = null;
+                foreach (['/usr/bin/php', PHP_BINDIR . '/php', PHP_BINARY] as $cand) {
+                    if ($cand && @is_executable($cand)) { $phpBin = $cand; break; }
+                }
+                if ($phpBin !== null) {
+                    @exec(escapeshellarg($phpBin) . ' ' . escapeshellarg(APP_ROOT . '/daily-run.php')
+                        . ' ' . escapeshellarg($cronKey) . ' daily > /dev/null 2>&1 &');
+                }
+            }
+        }
+    } catch (\Throwable $e) {
+        // The fallback must never break a page.
+    }
+}
