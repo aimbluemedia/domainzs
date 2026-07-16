@@ -72,20 +72,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('/superadmin/dailyrecap.php?date=' . urlencode($d));
     }
 
-    // Generate/Regenerate. Prefer a detached process; if exec() is disabled,
-    // fall back to a finish-request background run, then to a bounded inline run.
+    // Regenerate (full AI rebuild). This needs a background job — a detached
+    // process, or a finish-request worker. Where NEITHER is available (this
+    // host has exec() disabled), we do NOT run the multi-second AI build inline
+    // (that 500s under the request timeout): we refresh availability instead
+    // and point the admin at the daily cron for a full rebuild.
     $date = (string)($_POST['date'] ?? $latest);
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        $hasFinish = function_exists('litespeed_finish_request') || function_exists('fastcgi_finish_request');
         if (spawn_background('bin/recap.php', ['--force', $date])) {
             set_setting('recap_generating_' . $date, (string) time());
-            flash('info', "Regenerating the {$date} recap in the background — refresh this page in ~20–30 seconds.");
-            redirect('/superadmin/dailyrecap.php?date=' . urlencode($date));
-        }
-        // exec disabled — do it inline. Return the page first if the host
-        // supports finish-request; otherwise the admin waits (bounded).
-        @set_time_limit(300);
-        $hasFinish = function_exists('litespeed_finish_request') || function_exists('fastcgi_finish_request');
-        if ($hasFinish) {
+            flash('info', "Regenerating the {$date} recap in the background — refresh in ~20–30 seconds.");
+        } elseif ($hasFinish) {
             set_setting('recap_generating_' . $date, (string) time());
             $pdoRef = $pdo; $configRef = $config; $dateRef = $date;
             register_shutdown_function(function () use ($pdoRef, $configRef, $dateRef): void {
@@ -96,12 +94,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 try { (new DailyRecap($pdoRef, $configRef))->generate($dateRef); } catch (\Throwable $e) {}
                 try { set_setting('recap_generating_' . $dateRef, '0'); } catch (\Throwable $e) {}
             });
-            flash('info', "Regenerating the {$date} recap in the background — refresh this page in ~20–30 seconds.");
+            flash('info', "Regenerating the {$date} recap in the background — refresh in ~20–30 seconds.");
         } else {
-            $engine->generate($date);
-            flash('success', "Recap for {$date} regenerated.");
+            // No background path: just refresh availability (fast, safe inline).
+            @set_time_limit(120);
+            $n = $engine->refreshAvailability($date);
+            flash('info', $n < 0
+                ? "No recap for {$date} yet — it's built by your daily cron. Availability can't run until it exists."
+                : "Availability refreshed ({$n} winners). Full AI rebuild runs on your daily cron (this host blocks in-page background jobs).");
         }
-        redirect('/superadmin/dailyrecap.php?date=' . urlencode($date));
     }
     redirect('/superadmin/dailyrecap.php?date=' . urlencode($date));
 }
