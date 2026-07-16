@@ -101,44 +101,47 @@ and a build-a-business angle. Runs automatically after each daily fetch; regener
 </div>
 <?php endif; ?>
 
-<div class="cards-2">
-    <?php if (!empty($b['top10'])): ?>
-    <div class="panel">
-        <h2 style="margin-top:0">🏆 Top 10</h2>
-        <ol class="recap-top10">
-            <?php foreach ((array)$b['top10'] as $i => $t): ?>
-            <li>
-                <span class="rt-rank"><?= $i + 1 ?></span>
-                <span class="rt-domain"><?= e((string)($t['domain'] ?? '')) ?></span>
-                <span class="rt-stars"><?= e($stars((int)($t['stars'] ?? 0))) ?></span>
-                <?php if (!empty($t['note'])): ?><span class="rt-note"><?= e((string)$t['note']) ?></span><?php endif; ?>
-            </li>
-            <?php endforeach; ?>
-        </ol>
-    </div>
-    <?php endif; ?>
-
-    <div class="panel">
-        <?php if (!empty($b['sleeper']['domain'])): ?>
-        <h2 style="margin-top:0">💤 The sleeper</h2>
-        <div class="recap-sleeper">
-            <div class="recap-hero-domain"><?= e((string)$b['sleeper']['domain']) ?></div>
-            <p><?= e((string)($b['sleeper']['why'] ?? '')) ?></p>
-        </div>
-        <?php endif; ?>
-
-        <?php if (!empty($b['builder_pick']['domain'])): $bp = $b['builder_pick']; ?>
-        <h2>🚀 Best to build on</h2>
-        <div class="recap-hero-domain"><?= e((string)$bp['domain']) ?></div>
-        <?php if (!empty($bp['why'])): ?>
-        <ul class="recap-list"><?php foreach ((array)$bp['why'] as $w): ?><li><?= e((string)$w) ?></li><?php endforeach; ?></ul>
-        <?php endif; ?>
-        <?php if (!empty($bp['business_ideas'])): ?>
-        <div class="recap-chips"><?php foreach ((array)$bp['business_ideas'] as $idea): ?><span class="chip"><?= e((string)$idea) ?></span><?php endforeach; ?></div>
-        <?php endif; ?>
-        <?php endif; ?>
-    </div>
+<?php if (!empty($b['top10'])): ?>
+<div class="panel">
+    <h2 style="margin-top:0">🏆 Top 10</h2>
+    <ol class="recap-top10">
+        <?php foreach ((array)$b['top10'] as $i => $t): ?>
+        <li>
+            <span class="rt-rank"><?= $i + 1 ?></span>
+            <div class="rt-body">
+                <div class="rt-line">
+                    <strong class="rt-domain"><?= e((string)($t['domain'] ?? '')) ?></strong>
+                    <span class="rt-stars"><?= e($stars((int)($t['stars'] ?? 0))) ?></span>
+                </div>
+                <?php if (!empty($t['note'])): ?><div class="rt-note"><?= e((string)$t['note']) ?></div><?php endif; ?>
+            </div>
+        </li>
+        <?php endforeach; ?>
+    </ol>
 </div>
+<?php endif; ?>
+
+<?php if (!empty($b['sleeper']['domain'])): ?>
+<div class="panel">
+    <h2 style="margin-top:0">💤 The sleeper</h2>
+    <div class="recap-domain-lg"><?= e((string)$b['sleeper']['domain']) ?></div>
+    <p class="recap-under"><?= e((string)($b['sleeper']['why'] ?? '')) ?></p>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($b['builder_pick']['domain'])): $bp = $b['builder_pick']; ?>
+<div class="panel">
+    <h2 style="margin-top:0">🚀 Best to build on</h2>
+    <div class="recap-domain-lg"><?= e((string)$bp['domain']) ?></div>
+    <?php if (!empty($bp['why'])): ?>
+    <ul class="recap-list recap-under"><?php foreach ((array)$bp['why'] as $w): ?><li><?= e((string)$w) ?></li><?php endforeach; ?></ul>
+    <?php endif; ?>
+    <?php if (!empty($bp['business_ideas'])): ?>
+    <div class="recap-under"><span class="recap-sublabel">Business ideas</span>
+    <div class="recap-chips"><?php foreach ((array)$bp['business_ideas'] as $idea): ?><span class="chip"><?= e((string)$idea) ?></span><?php endforeach; ?></div></div>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <?php if (!empty($b['verdict'])): ?>
 <div class="panel recap-verdict"><h2 style="margin-top:0">✅ Verdict</h2><p><?= e((string)$b['verdict']) ?></p></div>
