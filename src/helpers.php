@@ -231,6 +231,32 @@ function mail_config(array $config): array
 }
 
 /**
+ * Fire-and-forget a CLI script as a fully detached background process, so the
+ * web request never waits on it (fixes page hangs from in-worker pipelines).
+ * Returns false if exec() is unavailable or no PHP binary was found.
+ */
+function spawn_background(string $relPath, array $args = []): bool
+{
+    if (!function_exists('exec')) {
+        return false;
+    }
+    $phpBin = null;
+    foreach (['/usr/bin/php', PHP_BINDIR . '/php', PHP_BINARY] as $cand) {
+        if ($cand && @is_executable($cand)) { $phpBin = $cand; break; }
+    }
+    if ($phpBin === null) {
+        return false;
+    }
+    $cmd = escapeshellarg($phpBin) . ' ' . escapeshellarg(APP_ROOT . '/' . ltrim($relPath, '/'));
+    foreach ($args as $a) {
+        $cmd .= ' ' . escapeshellarg((string) $a);
+    }
+    // nohup + closed stdin + background = the web worker returns immediately.
+    @exec('nohup ' . $cmd . ' < /dev/null > /dev/null 2>&1 &');
+    return true;
+}
+
+/**
  * The full daily job in one call: fetch + filter + score + verify + AI-rate,
  * generate the Daily Recap, email it once, and stamp cron_last_run. Shared by
  * daily-run.php (cron/URL), the admin "Run now" button, and the self-healer.
