@@ -9,7 +9,7 @@ use Domainzs\Compounds;
 
 Auth::requireAdmin();
 
-$len  = (int)($_GET['len'] ?? 0);              // 0 = all (5–8), else exact
+$len  = (int)($_GET['len'] ?? 0);              // 0 = all (5–9), else exact
 $q    = trim((string)($_GET['q'] ?? ''));
 $date = (string)($_GET['date'] ?? '');
 $min  = (int)($_GET['min'] ?? 0);
@@ -28,12 +28,12 @@ layout_header('Word Pairs', 'admin');
 <h1>Word Pairs</h1>
 <p class="sub">Two-word .com names — an SLD that's <strong>two real words</strong> stuck together
 (<em>volt&nbsp;+&nbsp;get</em>, <em>jeep&nbsp;+&nbsp;pup</em>). These read as brandable and pronounceable,
-which is what makes short compounds resell. Scanning <strong>5–8 character</strong> drops; both halves
+which is what makes short compounds resell. Scanning <strong>5–9 character</strong> drops; both halves
 must be dictionary words.</p>
 
 <div class="lentabs">
     <?php
-    $tabs = [0 => 'All 5–8', 5 => '5 chars', 6 => '6 chars', 7 => '7 chars', 8 => '8 chars'];
+    $tabs = [0 => 'All 5–9', 5 => '5 chars', 6 => '6 chars', 7 => '7 chars', 8 => '8 chars', 9 => '9 chars'];
     foreach ($tabs as $v => $lbl):
         $qs = http_build_query(array_filter(['len' => $v ?: null, 'q' => $q, 'date' => $date, 'min' => $min ?: null, 'sort' => $sort !== 'balance' ? $sort : null]));
     ?>
