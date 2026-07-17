@@ -22,7 +22,7 @@ final class Compounds
     }
 
     /**
-     * Return drops (len 5–8) whose SLD splits cleanly into two known words.
+     * Return drops (len 5–9) whose SLD splits cleanly into two known words.
      * Each row gains: word_a, word_b, split ("volt+get"), balance (min half len).
      *
      * @param array{len?:int,q?:string,date?:string,min?:int,sort?:string} $f
@@ -30,14 +30,14 @@ final class Compounds
      */
     public function find(array $f = []): array
     {
-        $len  = (int)($f['len'] ?? 0);           // 0 = 5..8, else exact
+        $len  = (int)($f['len'] ?? 0);           // 0 = 5..9, else exact
         $q    = trim((string)($f['q'] ?? ''));
         $date = (string)($f['date'] ?? '');
         $min  = (int)($f['min'] ?? 0);
 
-        $where  = 'len BETWEEN 5 AND 8';
+        $where  = 'len BETWEEN 5 AND 9';
         $params = [];
-        if ($len >= 5 && $len <= 8) { $where .= ' AND len = ?';   $params[] = $len; }
+        if ($len >= 5 && $len <= 9) { $where .= ' AND len = ?';   $params[] = $len; }
         if ($q !== '')              { $where .= ' AND sld LIKE ?'; $params[] = '%' . $q . '%'; }
         if ($date !== '')           { $where .= ' AND dropped_date = ?'; $params[] = $date; }
         if ($min > 0)               { $where .= ' AND score >= ?'; $params[] = $min; }
