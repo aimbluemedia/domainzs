@@ -158,6 +158,18 @@ form.stack input, form.stack select, form.stack textarea {
 .len-good  { background: rgba(29,185,84,.18); color: var(--green); border: 1px solid var(--green-dark); }
 .len-plain { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
 
+/* Length tabs (Word Pairs) */
+.lentabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+.lentab { padding: 9px 18px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--muted); font-weight: 700; font-size: .9rem; }
+.lentab:hover { border-color: var(--accent); text-decoration: none; }
+.lentab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Word-pair chips */
+.wordpair { display: inline-block; font-weight: 700; padding: 2px 9px; border-radius: 7px;
+    background: rgba(77,163,255,.14); color: var(--accent); border: 1px solid rgba(77,163,255,.3); }
+.wp-plus { color: var(--muted); font-weight: 800; margin: 0 6px; }
+
 /* Status badges */
 .badge-st { display: inline-block; font-weight: 700; font-size: .78rem; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
 .st-free    { background: var(--green);   color: #fff; }
