@@ -45,7 +45,8 @@ if ($lastRun === '') {
     $summary = setting('cron_last_summary', '');
     if ($ago > 26 * 3600) {
         echo '<div class="flash flash-error">⚠️ Cron last ran <strong>' . e($human) . '</strong> ('
-            . e($lastRun) . '). It should run daily — check your hPanel cron job.'
+            . e($lastRun) . '). It should run daily — check your hPanel cron job, or '
+            . '<a href="/superadmin/runnow.php">Run now</a> to catch up.'
             . ($summary ? ' Last: ' . e($summary) . '.' : '') . '</div>';
     } else {
         echo '<div class="flash flash-success">✅ Cron last ran <strong>' . e($human) . '</strong> ('

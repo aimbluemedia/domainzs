@@ -20,6 +20,7 @@ function nav_links(string $area): array
             ['/superadmin/dailyrecap.php', 'Daily Recap'],
             ['/superadmin/drops.php', 'Drops'],
             ['/superadmin/compounds.php', 'Word Pairs'],
+            ['/superadmin/runnow.php', 'Run now'],
             ['/superadmin/listings.php', 'Listings'],
             ['/superadmin/offers.php', 'Offers'],
             ['/superadmin/members.php', 'Members'],

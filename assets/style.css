@@ -158,6 +158,16 @@ form.stack input, form.stack select, form.stack textarea {
 .len-good  { background: rgba(29,185,84,.18); color: var(--green); border: 1px solid var(--green-dark); }
 .len-plain { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
 
+/* Run-now progress */
+.progress { height: 12px; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 999px; overflow: hidden; }
+.progress-bar { height: 100%; width: 0; background: var(--accent);
+    transition: width .3s ease; }
+.runlog { list-style: none; margin: 12px 0 0; padding: 0; }
+.runlog li { padding: 7px 10px; border-bottom: 1px solid var(--border);
+    font-size: .9rem; color: var(--text); }
+.runlog li:last-child { border-bottom: 0; }
+
 /* Length tabs (Word Pairs) */
 .lentabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
 .lentab { padding: 9px 18px; border-radius: 999px; border: 1px solid var(--border);
