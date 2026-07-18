@@ -12,9 +12,12 @@ use PDOException;
 final class Database
 {
     private static ?PDO $pdo = null;
+    /** Remembered so reconnect() can rebuild the same connection. */
+    private static array $cfg = [];
 
     public static function connect(array $cfg): PDO
     {
+        self::$cfg = $cfg;
         if (self::$pdo instanceof PDO) {
             return self::$pdo;
         }
@@ -33,6 +36,14 @@ final class Database
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
+            // The recap makes long AI + availability calls between DB queries;
+            // keep the server from closing an idle connection mid-job ("MySQL
+            // server has gone away"). Best-effort — ignored if the host caps it.
+            try {
+                self::$pdo->exec('SET SESSION wait_timeout = 600, interactive_timeout = 600');
+            } catch (\Throwable $e) {
+                // not fatal — reconnect() covers the case where it still drops
+            }
         } catch (PDOException $e) {
             http_response_code(500);
             exit(
@@ -43,6 +54,13 @@ final class Database
         }
 
         return self::$pdo;
+    }
+
+    /** Force a fresh connection (after "server has gone away"). */
+    public static function reconnect(): PDO
+    {
+        self::$pdo = null;
+        return self::connect(self::$cfg);
     }
 
     public static function pdo(): PDO
