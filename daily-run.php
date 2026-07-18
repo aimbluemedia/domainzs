@@ -64,7 +64,11 @@ foreach ($candidates as $a) {
 }
 
 // One shared pipeline: fetch → rate → recap → email → stamp last-run.
-$stats = run_daily_pipeline($pdo, $config, $dateArg);
+// With no explicit date, catch up on any days the (flaky) cron skipped —
+// the free WhoisFreaks archive keeps per-date files, so gaps self-heal.
+$stats = $dateArg !== null
+    ? run_daily_pipeline($pdo, $config, $dateArg)
+    : run_daily_catchup($pdo, $config);
 $date  = $stats['date'];
 
 $top = $pdo->prepare('SELECT domain, score FROM drops WHERE dropped_date = ? ORDER BY score DESC LIMIT 5');
@@ -72,6 +76,10 @@ $top->execute([$date]);
 (new Notifier($config))->sendFetchDigest($date, $stats, $top->fetchAll());
 
 $stamp = date('Y-m-d H:i:s');
+if (!empty($stats['catchup']) && count($stats['catchup']) > 1) {
+    echo "[{$stamp}] caught up on " . count($stats['catchup']) . ' day(s): '
+        . implode(', ', $stats['catchup']) . "\n";
+}
 echo "[{$stamp}] {$date}: {$stats['raw']} in feed → {$stats['matched']} matched → {$stats['added']} new"
     . " · {$stats['verified']} availability-verified · {$stats['moz_rated']} Moz-rated · {$stats['ai_rated']} AI-rated\n";
 if (!empty($stats['error'])) {

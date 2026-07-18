@@ -263,7 +263,7 @@ function spawn_background(string $relPath, array $args = []): bool
  *
  * @return array the DropEngine stats (plus 'recap_pick' for messaging)
  */
-function run_daily_pipeline(\PDO $pdo, array $config, ?string $date = null): array
+function run_daily_pipeline(\PDO $pdo, array $config, ?string $date = null, bool $sendEmail = true): array
 {
     @set_time_limit(600);
     $stats = (new \Domainzs\DropEngine($pdo, $config))->run($date);
@@ -275,7 +275,9 @@ function run_daily_pipeline(\PDO $pdo, array $config, ?string $date = null): arr
             $recap = (new \Domainzs\DailyRecap($pdo, $config))->forDate($d);
             if ($recap !== null) {
                 $stats['recap_pick'] = $recap['body']['top_pick']['domain'] ?? null;
-                email_recap_once($config, $d, $recap['body']);
+                if ($sendEmail) {
+                    email_recap_once($config, $d, $recap['body']);
+                }
             }
         } catch (\Throwable $e) {
             // recap is best-effort; never fail the fetch over it
@@ -285,6 +287,67 @@ function run_daily_pipeline(\PDO $pdo, array $config, ?string $date = null): arr
     set_setting('cron_last_run', date('Y-m-d H:i:s'));
     set_setting('cron_last_summary', "{$d}: {$stats['matched']} matched, {$stats['added']} new");
     return $stats;
+}
+
+/**
+ * Run the daily pipeline for the target day AND backfill any missed days in
+ * the trailing window. Hostinger's cron is flaky and sometimes skips a day or
+ * two; because the free WhoisFreaks list keeps per-date archive files, a
+ * skipped day can still be recovered the next time the cron fires. Processes
+ * missing days oldest→newest (the target day always last), and emails only the
+ * newest day's recap so a multi-day catch-up doesn't send a burst of emails.
+ *
+ * Returns the target day's stats, plus 'catchup' => [dates processed].
+ */
+function run_daily_catchup(\PDO $pdo, array $config, int $maxDays = 4): array
+{
+    $drops   = drops_config($config);
+    $offset  = max(0, (int) $drops['day_offset']);
+    $target  = date('Y-m-d', time() - $offset * 86400);
+    $maxDays = max(1, min(14, $maxDays));
+    $start   = date('Y-m-d', strtotime($target) - ($maxDays - 1) * 86400);
+
+    // Which days in [start .. target] already have a batch?
+    $have = [];
+    try {
+        $q = $pdo->prepare('SELECT DISTINCT dropped_date FROM drops WHERE dropped_date BETWEEN ? AND ?');
+        $q->execute([$start, $target]);
+        foreach ($q->fetchAll(\PDO::FETCH_COLUMN) as $d) {
+            $have[(string) $d] = true;
+        }
+    } catch (\Throwable $e) {
+        // tables not migrated — just try the target below
+    }
+
+    // Missing prior days (oldest first), then always the target day last.
+    $todo = [];
+    for ($i = $maxDays - 1; $i >= 1; $i--) {
+        $d = date('Y-m-d', strtotime($target) - $i * 86400);
+        if (!isset($have[$d])) {
+            $todo[] = $d;
+        }
+    }
+    $todo[] = $target;
+
+    $last = count($todo) - 1;
+    $processed = [];
+    $targetStats = null;
+    foreach ($todo as $idx => $d) {
+        try {
+            $stats = run_daily_pipeline($pdo, $config, $d, $idx === $last); // email only newest
+            $processed[] = $d;
+            if ($d === $target) {
+                $targetStats = $stats;
+            }
+        } catch (\Throwable $e) {
+            // one bad day must not abort the rest of the catch-up
+        }
+    }
+
+    $targetStats ??= ['date' => $target, 'raw' => 0, 'matched' => 0, 'added' => 0,
+                      'verified' => 0, 'moz_rated' => 0, 'ai_rated' => 0, 'recap_pick' => null];
+    $targetStats['catchup'] = $processed;
+    return $targetStats;
 }
 
 /**
