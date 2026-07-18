@@ -38,17 +38,21 @@ $fail = function (int $status, string $msg) use ($isCli): never {
     exit($isCli ? 1 : 0);
 };
 
-// --- Auth: key from the CLI argument, or ?key= on the URL (constant-time) ---
-$configured = (string) setting('cron_key', '');
-$provided   = $isCli
-    ? (string) ($argv[1] ?? '')
-    : (string) ($_GET['key'] ?? $_GET['token'] ?? '');
-
-if ($configured === '') {
-    $fail(503, 'Cron key not set. Open Settings → Automation and save a key first.');
-}
-if ($provided === '' || !hash_equals($configured, $provided)) {
-    $fail(403, 'Forbidden — bad or missing cron key.');
+// --- Auth ---
+// The secret key only guards the PUBLIC URL endpoint (?key=…). A command
+// cron (`/usr/bin/php daily-run.php`) already requires shell access to this
+// server, so it's trusted and needs no key — this is why the hPanel command
+// cron "just works" even if the saved key changes. The key is still accepted
+// on the CLI (a leftover argument is fine) but is not required there.
+if (!$isCli) {
+    $configured = (string) setting('cron_key', '');
+    $provided   = (string) ($_GET['key'] ?? $_GET['token'] ?? '');
+    if ($configured === '') {
+        $fail(503, 'Cron key not set. Open Settings → Automation and save a key first.');
+    }
+    if ($provided === '' || !hash_equals($configured, $provided)) {
+        $fail(403, 'Forbidden — bad or missing cron key. Copy the exact key from Settings → Automation into your ?key= URL.');
+    }
 }
 
 @set_time_limit(600);
