@@ -128,13 +128,35 @@ final class DailyRecap
         // Live availability for the winners (top pick + top 10) via WhoisFreaks.
         $body['availability'] = $this->checkWinners($body);
 
-        $this->pdo->prepare(
+        // The AI + availability calls above can outlast MySQL's idle timeout, so
+        // reconnect if the connection dropped before this write.
+        $this->resilientWrite(
             'INSERT INTO daily_recaps (recap_date, body, drop_count, is_ai) VALUES (?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE body = VALUES(body), drop_count = VALUES(drop_count),
-                                     is_ai = VALUES(is_ai), created_at = CURRENT_TIMESTAMP'
-        )->execute([$date, json_encode($body, JSON_UNESCAPED_SLASHES), count($drops), $isAi ? 1 : 0]);
+                                     is_ai = VALUES(is_ai), created_at = CURRENT_TIMESTAMP',
+            [$date, json_encode($body, JSON_UNESCAPED_SLASHES), count($drops), $isAi ? 1 : 0]
+        );
 
         return ['body' => $body, 'is_ai' => $isAi, 'drop_count' => count($drops)];
+    }
+
+    /**
+     * Run a write, reconnecting once if the connection died mid-job
+     * ("MySQL server has gone away", error 2006). Refreshes $this->pdo so the
+     * rest of the request uses the live connection.
+     */
+    private function resilientWrite(string $sql, array $params): void
+    {
+        try {
+            $this->pdo->prepare($sql)->execute($params);
+        } catch (\PDOException $e) {
+            if (($e->errorInfo[1] ?? 0) === 2006 || str_contains($e->getMessage(), 'gone away')) {
+                $this->pdo = Database::reconnect();
+                $this->pdo->prepare($sql)->execute($params);
+                return;
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -176,10 +198,26 @@ final class DailyRecap
         // Fill any gaps from what the fetch already stored on the drops row.
         $missing = array_values(array_diff($domains, array_keys(array_filter($result, fn ($v) => $v !== 'unknown'))));
         if ($missing) {
-            $ph = implode(',', array_fill(0, count($missing), '?'));
-            $stmt = $this->pdo->prepare("SELECT domain, availability FROM drops WHERE domain IN ($ph) AND availability <> 'unknown'");
-            $stmt->execute($missing);
-            foreach ($stmt->fetchAll() as $row) {
+            $ph  = implode(',', array_fill(0, count($missing), '?'));
+            $sql = "SELECT domain, availability FROM drops WHERE domain IN ($ph) AND availability <> 'unknown'";
+            $rows = [];
+            try {
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute($missing);
+                $rows = $stmt->fetchAll();
+            } catch (\PDOException $e) {
+                // The WhoisFreaks call above may have outlasted MySQL's idle
+                // timeout — reconnect and retry once.
+                if (($e->errorInfo[1] ?? 0) === 2006 || str_contains($e->getMessage(), 'gone away')) {
+                    $this->pdo = Database::reconnect();
+                    $stmt = $this->pdo->prepare($sql);
+                    $stmt->execute($missing);
+                    $rows = $stmt->fetchAll();
+                } else {
+                    throw $e;
+                }
+            }
+            foreach ($rows as $row) {
                 $d = strtolower((string)$row['domain']);
                 if (($result[$d] ?? 'unknown') === 'unknown') {
                     $result[$d] = (string) $row['availability'];
